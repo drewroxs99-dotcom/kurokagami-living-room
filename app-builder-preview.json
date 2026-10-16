@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Kurokagami",
+      "hasCanvas": true,
+      "bodyTextLen": 34,
+      "bodyTextHash": "bf6aea3423b72e75225f2a1c3c8d501c949648f976506c9735f95385c514d8ba",
+      "bodyTextPrefix": "虚ろな家 Komachi sits with the room. 家",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Kurokagami",
+      "hasCanvas": true,
+      "bodyTextLen": 34,
+      "bodyTextHash": "bf6aea3423b72e75225f2a1c3c8d501c949648f976506c9735f95385c514d8ba",
+      "bodyTextPrefix": "虚ろな家 Komachi sits with the room. 家",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
