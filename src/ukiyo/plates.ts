@@ -96,7 +96,7 @@ function load(src: string): HTMLImageElement | null {
 }
 
 export function roomPlate(): HTMLImageElement | null {
-  return load("/prints/room.jpg");
+  return load("/prints/hall.jpg");
 }
 
 function platePose(ch: SimChar): PlatePose {
