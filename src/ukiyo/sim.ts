@@ -948,7 +948,7 @@ export function stepWorld(world: World, dt: number, settings: Settings, mutate: 
         ch.taskTime = 0;
         if (ch.reserved && ch.seat !== ch.reserved) ch.reserved = ch.seat;
         buildPlan(world, ch, settings, job.plan);
-        if (ch.sit > 0.35 and ch.queue[0]?.kind !== "stand" and job.plan !== "sit" and job.plan !== "wait") {
+        if (ch.sit > 0.35 && ch.queue[0]?.kind !== "stand" && job.plan !== "sit" && job.plan !== "wait") {
           ch.queue.unshift({ kind: "stand" });
         }
       }
