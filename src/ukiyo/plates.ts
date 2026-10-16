@@ -61,6 +61,7 @@ const CANON_PATTERN: Record<string, PatternId> = {
 };
 
 const images = new Map<string, HTMLImageElement>();
+const tableForegroundLayers = new Map<string, HTMLCanvasElement>();
 
 function load(src: string): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
@@ -76,6 +77,47 @@ function load(src: string): HTMLImageElement | null {
 
 export function roomPlate(): HTMLImageElement | null {
   return load("/prints/room.jpg");
+}
+
+function drawTableForeground(ctx: CanvasRenderingContext2D, settings: Settings) {
+  const room = roomPlate();
+  if (!room) return;
+
+  const key = `${settings.env.wood}:${settings.env.lanternPaper}:${settings.env.screen}`;
+  let layer = tableForegroundLayers.get(key);
+  if (!layer) {
+    layer = document.createElement("canvas");
+    layer.width = 1600;
+    layer.height = 900;
+    const layerCtx = layer.getContext("2d");
+    if (!layerCtx) return;
+    layerCtx.beginPath();
+    layerCtx.moveTo(650, 647);
+    layerCtx.lineTo(949, 647);
+    layerCtx.lineTo(980, 676);
+    layerCtx.lineTo(982, 700);
+    layerCtx.lineTo(616, 700);
+    layerCtx.lineTo(616, 678);
+    layerCtx.closePath();
+    layerCtx.rect(624, 698, 350, 26);
+    layerCtx.moveTo(637, 706);
+    layerCtx.lineTo(664, 706);
+    layerCtx.lineTo(664, 769);
+    layerCtx.lineTo(651, 778);
+    layerCtx.lineTo(640, 773);
+    layerCtx.closePath();
+    layerCtx.moveTo(939, 706);
+    layerCtx.lineTo(963, 706);
+    layerCtx.lineTo(963, 773);
+    layerCtx.lineTo(951, 779);
+    layerCtx.lineTo(939, 772);
+    layerCtx.closePath();
+    layerCtx.clip();
+    layerCtx.drawImage(room, 0, 0, 1600, 900);
+    drawRoomTints(layerCtx, settings);
+    tableForegroundLayers.set(key, layer);
+  }
+  ctx.drawImage(layer, 0, 0);
 }
 
 function platePose(ch: SimChar): PlatePose {
@@ -361,9 +403,10 @@ export function drawPlateCast(
   selected: string | null,
   ink: Ink,
 ) {
-  type Item = { y: number; draw: () => void };
+  type Item = { y: number; depth?: number; draw: () => void };
   const items: Item[] = [];
   items.push({ y: 120, draw: () => drawRoomTints(ctx, settings) });
+  items.push({ y: 780, draw: () => drawTableForeground(ctx, settings) });
   items.push({
     y: BRAZIER.y,
     draw: () => {
@@ -371,13 +414,18 @@ export function drawPlateCast(
       wisps(ctx, BRAZIER.x, BRAZIER.y - 10, world.time, "rgba(70,60,50,0.55)");
     },
   });
+  const pot = TEA_TABLES[0]?.pot;
+  if (pot) {
+    items.push({
+      y: pot.y,
+      depth: 781,
+      draw: () => drawPot(ctx, pot.x, pot.y, settings, ink),
+    });
+  }
   for (const table of TEA_TABLES) {
     items.push({
-      y: table.pot.y,
-      draw: () => drawPot(ctx, table.pot.x, table.pot.y, settings, ink),
-    });
-    items.push({
       y: table.sweet.y,
+      depth: 781,
       draw: () => drawSweet(ctx, table.sweet.x, table.sweet.y, ink),
     });
     for (const cup of table.cups) {
@@ -385,6 +433,7 @@ export function drawPlateCast(
       if (held) continue;
       items.push({
         y: cup.y,
+        depth: 781,
         draw: () => drawCup(ctx, cup.x, cup.y - 6, 1.2, settings, ink),
       });
     }
@@ -406,7 +455,7 @@ export function drawPlateCast(
       items.push({ y: pet.y, draw: () => drawPet(ctx, pet, world) });
     }
   }
-  items.sort((a, b) => a.y - b.y);
+  items.sort((a, b) => (a.depth ?? a.y) - (b.depth ?? b.y));
   for (const item of items) item.draw();
 }
 
