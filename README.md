@@ -25,7 +25,7 @@ Use GitHub Desktop so the project folders keep their paths. GitHub's browser upl
 2. Create an empty GitHub repository, or clone the existing `kurokagami-living-room` repository with GitHub Desktop.
 3. In GitHub Desktop, choose **Show in Explorer** for the cloned repository.
 4. Copy the *contents* of the extracted `kurokagami-living-room` folder into the cloned repository folder. Keep the clone's hidden `.git` folder. Replace matching project files when prompted.
-5. Before committing, confirm the repository root now contains `scripts/with-app-env.mjs`, `src/`, `server/`, and `public/prints/room.jpg`.
+5. Before committing, confirm the repository root now contains `scripts/with-app-env.mjs`, `src/`, `server/`, and `public/prints/hall.jpg`.
 6. In GitHub Desktop, commit the changes and choose **Push origin**.
 
 Do not upload the ZIP itself as a project file, and do not copy only the files inside each source folder into the repository root. The directory structure is required by Vite and the application imports.
