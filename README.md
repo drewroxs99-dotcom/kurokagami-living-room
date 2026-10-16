@@ -17,17 +17,28 @@ Open the local address printed by the development server. To check types, run `n
 
 The project is configured for Vercel's Vite/Nitro adapter. The repository includes `package-lock.json`; Vercel can detect npm and install both runtime and build dependencies automatically.
 
-### Start a new GitHub repository
+### Put the project in GitHub
 
-GitHub does not unpack a ZIP you upload. Extract this archive first. On GitHub, select **+ → New repository**, choose a name (for example, `kurokagami-living-room`) and visibility, and leave the options to add a README, `.gitignore`, or license unchecked. The project already includes its README and `.gitignore`.
+Use GitHub Desktop so the project folders keep their paths. GitHub's browser upload flow can leave files such as `with-app-env.mjs` at the repository root; the app needs them under `scripts/`.
 
-On the empty repository page, select **Add file → Upload files**. Upload the extracted project folders one at a time, dragging each whole folder so its path is preserved: `attachments`, `migrations`, `public`, `screenshots`, `scripts`, `server`, and `src`. Commit each upload. Then upload the files from the project root in one batch, including the hidden `.gitignore` file, and commit. GitHub's browser uploader accepts up to 100 files per batch and 25 MiB per file; every folder here is below the batch limit and the largest file is about 17.4 MiB.
+1. Extract the ZIP on your computer.
+2. Create an empty GitHub repository, or clone the existing `kurokagami-living-room` repository with GitHub Desktop.
+3. In GitHub Desktop, choose **Show in Explorer** for the cloned repository.
+4. Copy the *contents* of the extracted `kurokagami-living-room` folder into the cloned repository folder. Keep the clone's hidden `.git` folder. Replace matching project files when prompted.
+5. Before committing, confirm the repository root now contains `scripts/with-app-env.mjs`, `src/`, `server/`, and `public/prints/room.jpg`.
+6. In GitHub Desktop, commit the changes and choose **Push origin**.
+
+Do not upload the ZIP itself as a project file, and do not copy only the files inside each source folder into the repository root. The directory structure is required by Vite and the application imports.
+
+If the repository already contains a flattened upload, copying this complete project into its clone adds the correct nested folders and replaces the root project configuration. The older flattened copies can remain; Vercel builds from the correctly named root package and its nested source folders.
 
 ### Deploy on Vercel
 
-1. Import the new GitHub repository into a Vercel project.
+1. Import the GitHub repository into a Vercel project, or let the existing project deploy after the GitHub push.
 2. Keep Vercel's detected install and build settings. The build produces Vercel's `.vercel/output` bundle.
 3. Deploy. The current app configuration does not require database or auth credentials.
+
+For the exact fix to the current failed deployment, see [TESTING_REPORT.md](TESTING_REPORT.md#current-vercel-build-failure).
 
 Vercel's GitHub authorization is separate from ChatGPT's GitHub connection. You can connect the repository to Vercel even if the ChatGPT GitHub app is unavailable.
 

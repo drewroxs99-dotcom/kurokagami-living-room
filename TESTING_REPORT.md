@@ -23,10 +23,20 @@ The archive contained the original project source, artwork, screenshots, and an 
 - Development server: started successfully and returned HTTP 200 for `/`.
 - Original room illustration: visually inspected directly from the shipped `public/prints/room.jpg`; the corrected path matches the detailed room artwork.
 
+## Current Vercel build failure
+
+The Vercel deployment page was inspected after the GitHub upload. Deployment `9zKxCdXLLjfaPaDS9HbSwqzaqync` failed before Vite started, with this first error:
+
+```text
+Error: Cannot find module '/vercel/path0/scripts/with-app-env.mjs'
+```
+
+The prepared project contains that file at `scripts/with-app-env.mjs`. The connected GitHub repository instead has the uploaded source files flattened at the repository root, so the build script's required `scripts/` path is missing. This is an upload layout problem, not a Vercel build-setting problem. The fix is to copy this ZIP's extracted project contents into a GitHub Desktop clone while preserving the folders, then commit and push. The README now includes the exact steps. The failing deployment was not changed from this session, and a successful Vercel redeploy still needs to run after the corrected source reaches GitHub.
+
 ## Checks not completed and known limits
 
 - A full browser render, interaction pass, screenshot capture, and console-error check were not completed. Playwright was installed, but its Chromium executable was not present. The repository's browser-smoke helper also assumes Linux `/workspace` screenshot paths and cannot run unchanged on this Windows host.
-- A deployment to a live Vercel account was not completed because no Vercel CLI login was available and the Vercel dashboard did not load in the browser session. The repository config was corrected for Vercel's automatic npm install; the existing local production build passed.
+- The live Vercel deployment did not complete. Its build log was inspected and identified the missing `scripts/with-app-env.mjs` path caused by flattened GitHub upload layout. A successful redeploy remains unverified until the directory structure is restored and pushed.
 - The package test command's `scripts/**/*.test.mjs` portion reported zero tests under this Windows invocation; the explicit TypeScript test portion reported 59/59 passing. A broad automatic script-test discovery also encountered platform/sandbox failures in tests that expect Linux-oriented temporary-file rename and symlink behavior. Those failures do not establish application behavior.
 - The original Grok sandbox URL was not accessible through the available browser lookup, so the live hosted application could not be compared.
 - The supplied source has no ray-marching or fractal renderer; it uses the 2D artwork/canvas path. No such renderer was added or claimed.

@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+@theme {
+  --color-lacquer: #100e0c;
+  --color-ink: #1c1410;
+  --color-ink-soft: #4a382c;
+  --color-muted: #7a6556;
+  --color-paper: #e7dcc6;
+  --color-paper-2: #f3ead8;
+  --color-paper-deep: #d4c4a4;
+  --color-vermilion: #8e3a30;
+  --color-indigo: #243652;
+  --color-gold: #8c7044;
+  --color-line: #cbb892;
+  --font-display: "Zen Old Mincho", "Shippori Mincho", palatino, "Iowan Old Style", serif;
+  --font-body: "Shippori Mincho", palatino, "Iowan Old Style", serif;
+  --radius-seal: 2px;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html,
+  body {
+    height: 100%;
+    background: var(--color-lacquer);
+    color: var(--color-paper);
+  }
+
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--color-vermilion);
+    outline-offset: 2px;
+  }
+}
+
+.ink-range {
+  appearance: none;
+  height: 2px;
+  width: 100%;
+  background: var(--color-line);
+  border-radius: 999px;
+}
+
+.ink-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--color-vermilion);
+  border: 2px solid var(--color-paper);
+  box-shadow: 0 0 0 1px var(--color-ink);
+}
+
+.ink-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--color-vermilion);
+  border: 2px solid var(--color-paper);
+}
+
+.ink-scroll {
+  position: relative;
+  min-height: 2.75rem;
+  color: var(--color-ink);
+  background:
+    linear-gradient(180deg, rgba(255, 250, 240, 0.55), transparent 42%),
+    linear-gradient(90deg, var(--color-paper-deep) 0%, var(--color-paper) 6%, var(--color-paper-2) 50%, var(--color-paper) 94%, var(--color-paper-deep) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 240, 0.7),
+    inset 0 -2px 0 rgba(74, 48, 28, 0.18),
+    0 2px 0 rgba(16, 12, 8, 0.45);
+}
+
+.ink-scroll::before,
+.ink-scroll::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  width: 0.7rem;
+  height: calc(100% + 6px);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-ink), var(--color-gold) 42%, var(--color-paper-2) 54%, var(--color-ink));
+  box-shadow: 0 1px 2px rgba(16, 12, 8, 0.45);
+}
+
+.ink-scroll::before {
+  left: -0.3rem;
+}
+
+.ink-scroll::after {
+  right: -0.3rem;
+}
+
+.paper-scroll {
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgba(255, 250, 240, 0.45), transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(90, 50, 30, 0.06), transparent 42%);
+  color: var(--color-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-safe {
+    transition: none !important;
+  }
+}
