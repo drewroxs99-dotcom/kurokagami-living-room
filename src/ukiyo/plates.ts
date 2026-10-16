@@ -3,10 +3,8 @@ import { patternTile } from "./patterns";
 import { figureScale, screenFootX } from "./figure";
 import { BRAZIER, CUSHIONS, PIPE_TRAY, TEA_TABLES } from "./sim";
 import { assetMatches, getActiveAssets, imageForAsset } from "./assets";
+import { plateDrawSign, type PlatePose } from "./plate-directions";
 import type { CharConfig, PatternId, Pet, Settings, SimChar, World } from "./types";
-
-const POSES = ["stand", "walk", "sit"] as const;
-type PlatePose = (typeof POSES)[number];
 
 const CAST = ["komachi", "hanae", "ofuku", "arai", "ume", "kichi", "otsu", "jiro", "saku", "hei"] as const;
 
@@ -62,25 +60,6 @@ const CANON_PATTERN: Record<string, PatternId> = {
   hei: "solid",
 };
 
-/**
- * Direction the unflipped plate is looking.
- * Almost every print faces left. Jiro faces right.
- * Sit plates for Hanae, Ume, and Hei face the other way.
- * Draw scale is facing * native, so the nose points the way they walk.
- */
-const PLATE_FACE: Record<string, Record<PlatePose, 1 | -1>> = {
-  komachi: { stand: -1, walk: -1, sit: -1 },
-  hanae: { stand: -1, walk: -1, sit: 1 },
-  ofuku: { stand: -1, walk: -1, sit: -1 },
-  arai: { stand: -1, walk: -1, sit: -1 },
-  ume: { stand: -1, walk: -1, sit: 1 },
-  kichi: { stand: -1, walk: -1, sit: -1 },
-  otsu: { stand: -1, walk: -1, sit: -1 },
-  jiro: { stand: 1, walk: 1, sit: 1 },
-  saku: { stand: -1, walk: -1, sit: -1 },
-  hei: { stand: -1, walk: -1, sit: 1 },
-};
-
 const images = new Map<string, HTMLImageElement>();
 
 function load(src: string): HTMLImageElement | null {
@@ -100,11 +79,8 @@ export function roomPlate(): HTMLImageElement | null {
 }
 
 function platePose(ch: SimChar): PlatePose {
-  if (ch.sit > 0.45 || ch.pose === "sit") return "sit";
-  if (ch.pose === "walk" && ch.sit < 0.2) {
-    const step = Math.sin(ch.walkPhase * Math.PI * 2);
-    return Math.abs(step) > 0.35 ? "walk" : "stand";
-  }
+  if (ch.pose === "walk" && ch.sit < 0.2) return "walk";
+  if (ch.sit > 0.5 || ch.pose === "sit") return "sit";
   return "stand";
 }
 
@@ -634,22 +610,18 @@ function drawOne(
   ink: Ink,
 ) {
   const pose = platePose(ch);
-  const img = load(srcFor(ch.id, pose)) ?? load(srcFor(ch.id, "stand"));
-  if (!img) return;
-
   const s = figureScale(ch.y) * config.stature;
   const x = screenFootX(ch.x, ch.y);
   const y = ch.y;
-  const tall = pose === "sit" ? 156 : 200;
-  const h = tall * s;
+  const img = load(srcFor(ch.id, pose)) ?? load(srcFor(ch.id, "stand"));
+  if (!img) return;
+  const seated = ch.sit * ch.sit * (3 - 2 * ch.sit);
+  const h = (200 - 44 * seated) * s;
   const w = h * (img.naturalWidth / img.naturalHeight);
   const idle = Math.sin(world.time * 0.9 + ch.x * 0.01);
   const walking = ch.pose === "walk" && ch.sit < 0.2;
   const bob = walking ? -Math.abs(Math.sin(ch.walkPhase * Math.PI * 2)) * 5 * s : idle * -2.2 * s;
   const breath = 1 + Math.sin(world.time * 1.35 + ch.y) * 0.012;
-  const native = PLATE_FACE[ch.id]?.[pose] ?? -1;
-  const drawSign = ch.facing * native;
-
   const kimono = CANON[ch.id] && config.pigment !== CANON[ch.id] ? pigmentHex(config.pigment) : null;
   const obi = CANON_OBI[ch.id] && config.obi !== CANON_OBI[ch.id] ? pigmentHex(config.obi) : null;
   const lining = CANON_LINING[ch.id] && config.lining !== CANON_LINING[ch.id] ? pigmentHex(config.lining) : null;
@@ -657,7 +629,6 @@ function drawOne(
     CANON_PATTERN[ch.id] && config.pattern !== CANON_PATTERN[ch.id] && config.pattern !== "solid"
       ? config.pattern
       : null;
-  const source = dyePlate(img, kimono, obi, lining, pattern);
 
   ctx.save();
   ctx.translate(x, y + bob);
@@ -666,7 +637,7 @@ function drawOne(
 
   ctx.fillStyle = "rgba(28,18,12,0.22)";
   ctx.beginPath();
-  ctx.ellipse(0, 4, (pose === "sit" ? 62 : 40) * s, 8 * s, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 4, (40 + 22 * seated) * s, 8 * s, 0, 0, Math.PI * 2);
   ctx.fill();
   if (selected) {
     ctx.strokeStyle = "#8e3a30";
@@ -676,25 +647,44 @@ function drawOne(
     ctx.stroke();
   }
 
-  ctx.save();
-  ctx.scale(drawSign, breath);
-  if (settings.env.misregister > 0.05) {
+  const drawPlate = (plate: PlatePose, alpha: number) => {
+    if (alpha <= 0) return;
+    const img = load(srcFor(ch.id, plate)) ?? load(srcFor(ch.id, "stand"));
+    if (!img) return;
+    const h = (plate === "sit" ? 156 : 200) * s;
+    const w = h * (img.naturalWidth / img.naturalHeight);
+    const source = dyePlate(img, kimono, obi, lining, pattern);
     ctx.save();
-    ctx.globalAlpha = 0.32 * settings.env.misregister;
-    ctx.drawImage(source, -w / 2 + 5, -h - 1, w, h);
+    ctx.globalAlpha *= alpha;
+    ctx.scale(plateDrawSign(ch.id, plate, ch.facing), breath);
+    if (settings.env.misregister > 0.05) {
+      ctx.save();
+      ctx.globalAlpha *= 0.32 * settings.env.misregister;
+      ctx.drawImage(source, -w / 2 + 5, -h - 1, w, h);
+      ctx.restore();
+    }
+    ctx.drawImage(source, -w / 2, -h, w, h);
     ctx.restore();
+  };
+
+  if (walking) {
+    drawPlate("walk", 1);
+  } else if (ch.sit > 0 && ch.sit < 1) {
+    drawPlate("stand", 1 - seated);
+    drawPlate("sit", seated);
+  } else {
+    drawPlate(pose, 1);
   }
-  ctx.drawImage(source, -w / 2, -h, w, h);
-  ctx.restore();
 
   if (ch.hold === "pipe" || ch.pose === "smoke") {
     const px = ch.facing * 18 * s;
-    const py = -h * (pose === "sit" ? 0.58 : 0.68);
+    const py = -h * (0.68 - 0.1 * seated);
     kiseru(ctx, px, py, s);
     wisps(ctx, px + ch.facing * 12 * s, py - 8 * s, world.time, "rgba(40,34,28,0.5)");
   } else if (ch.hold === "cup" || ch.pose === "drink") {
     const px = ch.facing * 16 * s;
-    const py = -h * (ch.pose === "drink" ? 0.52 + ch.raise * 0.12 : 0.5);
+    const cupHeight = ch.pose === "drink" ? 0.52 + ch.raise * 0.12 : 0.5;
+    const py = -h * cupHeight;
     drawCup(ctx, px, py, Math.max(0.7, s), settings, ink);
     wisps(ctx, px, py - 10 * s, world.time * 0.8, "rgba(90,80,70,0.4)");
   }

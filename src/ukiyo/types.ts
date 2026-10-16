@@ -96,7 +96,7 @@ export type Task =
   | { kind: "face"; dir: 1 | -1 }
   | { kind: "sit"; seat: string }
   | { kind: "stand" }
-  | { kind: "takeCup" }
+  | { kind: "takeCup"; cupId?: string }
   | { kind: "placeCup" }
   | { kind: "drink" }
   | { kind: "takePipe" }

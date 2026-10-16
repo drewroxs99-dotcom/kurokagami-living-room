@@ -175,7 +175,7 @@ export function createWorld(settings: Settings): World {
       { kind: "goto", x: left.approach.x, y: left.approach.y },
       { kind: "face", dir: left.approach.face },
       { kind: "pose", pose: "reach", seconds: 0.7 },
-      { kind: "takeCup" },
+      { kind: "takeCup", cupId: "l1" },
       { kind: "goto", x: SEATS[2].x, y: SEATS[2].y },
       { kind: "face", dir: -1 },
       { kind: "sit", seat: "center" },
@@ -315,6 +315,15 @@ function dist(a: { x: number; y: number }, b: { x: number; y: number }) {
 function pushLog(world: World, text: string) {
   world.log.unshift({ text, time: world.time });
   if (world.log.length > 16) world.log.pop();
+}
+
+function abortInteraction(world: World, ch: SimChar, settings: Settings, message: string) {
+  ch.queue = [{ kind: "wait", seconds: 1 }];
+  ch.taskTime = 0;
+  ch.raise = 0;
+  ch.pose = ch.sit > 0.5 ? "sit" : "stand";
+  releaseReserve(ch);
+  pushLog(world, `${nameOf(settings, ch.id)} ${message}`);
 }
 
 function finish(ch: SimChar) {
@@ -549,7 +558,7 @@ function buildPlan(world: World, ch: SimChar, settings: Settings, plan: PlanName
         tasks.push({ kind: "goto", x: table.approach.x, y: table.approach.y });
         tasks.push({ kind: "face", dir: table.approach.face });
         tasks.push({ kind: "pose", pose: "reach", seconds: 0.65 });
-        tasks.push({ kind: "takeCup" });
+        if (cup) tasks.push({ kind: "takeCup", cupId: cup.id });
       }
       const seat =
         SEATS.find((s) => s.id === table.seat && !seatTaken(world, s.id, ch.id, settings)) ??
@@ -811,18 +820,20 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
   }
 
   if (task.kind === "takeCup") {
+    const cup = task.cupId
+      ? world.cups.find((candidate) => candidate.id === task.cupId)
+      : nearestFreeCup(world, ch);
+    if (!cup || cup.holder || dist(ch, cup) > 250) {
+      abortInteraction(world, ch, settings, "could not reach a free cup.");
+      return;
+    }
     if (ch.hold === "pipe") {
-      world.pipeHolder = null;
-      ch.hold = "none";
+      abortInteraction(world, ch, settings, "put the pipe away before taking a cup.");
+      return;
     }
-    const free = world.cups.filter((c) => c.holder === null);
-    free.sort((a, b) => Math.hypot(a.x - ch.x, a.y - ch.y) - Math.hypot(b.x - ch.x, b.y - ch.y));
-    const cup = free[0];
-    if (cup) {
-      cup.holder = ch.id;
-      ch.hold = "cup";
-      pushLog(world, `${nameOf(settings, ch.id)} lifted a cup.`);
-    }
+    cup.holder = ch.id;
+    ch.hold = "cup";
+    pushLog(world, `${nameOf(settings, ch.id)} lifted a cup.`);
     finish(ch);
     return;
   }
@@ -840,6 +851,10 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
   }
 
   if (task.kind === "drink") {
+    if (ch.hold !== "cup") {
+      abortInteraction(world, ch, settings, "could not drink without a cup.");
+      return;
+    }
     ch.pose = "drink";
     const e = ch.taskTime;
     if (e < 0.7) ch.raise = e / 0.7;
@@ -860,15 +875,21 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
   }
 
   if (task.kind === "takePipe") {
-    if (!world.pipeHolder || world.pipeHolder === ch.id) {
-      if (ch.hold === "cup") {
-        const cup = world.cups.find((c) => c.holder === ch.id);
-        if (cup) cup.holder = null;
-      }
-      world.pipeHolder = ch.id;
-      ch.hold = "pipe";
-      pushLog(world, `${nameOf(settings, ch.id)} took the kiseru.`);
+    if (world.pipeHolder && world.pipeHolder !== ch.id) {
+      abortInteraction(world, ch, settings, "could not take the pipe; someone else has it.");
+      return;
     }
+    if (dist(ch, PIPE_TRAY) > 110) {
+      abortInteraction(world, ch, settings, "could not reach the pipe tray.");
+      return;
+    }
+    if (ch.hold === "cup") {
+      const cup = world.cups.find((c) => c.holder === ch.id);
+      if (cup) cup.holder = null;
+    }
+    world.pipeHolder = ch.id;
+    ch.hold = "pipe";
+    pushLog(world, `${nameOf(settings, ch.id)} took the kiseru.`);
     finish(ch);
     return;
   }
@@ -882,6 +903,20 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
   }
 
   if (task.kind === "smoke") {
+    if (ch.hold !== "pipe") {
+      abortInteraction(world, ch, settings, "could not smoke without the pipe.");
+      return;
+    }
+    if (!settings.env.smoke) {
+      ch.queue = [
+        { kind: "stand" },
+        { kind: "goto", x: PIPE_TRAY.x - 46, y: PIPE_TRAY.y },
+        { kind: "face", dir: PIPE_TRAY.face },
+        { kind: "placePipe" },
+      ];
+      ch.taskTime = 0;
+      return;
+    }
     ch.pose = "smoke";
     ch.raise = 0.35 + Math.sin(ch.taskTime * 1.4) * 0.08;
     if (world.rng() < dt * 7) {
