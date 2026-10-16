@@ -411,8 +411,7 @@ function clampWalk(ch: SimChar) {
 }
 
 function blocked(x: number, y: number) {
-  // consider points on or inside the lacquer rectangles blocked
-  return SOLIDS.some((s) => x >= s.x0 && x <= s.x1 && y >= s.y0 && y <= s.y1);
+  return SOLIDS.some((s) => x > s.x0 && x < s.x1 && y > s.y0 && y < s.y1);
 }
 
 function pushOut(ch: { x: number; y: number }) {
@@ -422,9 +421,8 @@ function pushOut(ch: { x: number; y: number }) {
     const right = s.x1 - ch.x;
     const side = Math.min(left, right);
     const front = s.y1 - ch.y;
-    // prefer nudging sideways unless the forward gap is clearly smaller
-    if (side + 12 < front) ch.x = left < right ? s.x0 - 12 : s.x1 + 12;
-    else ch.y = s.y1 + 12;
+    if (side + 8 < front) ch.x = left < right ? s.x0 - 10 : s.x1 + 10;
+    else ch.y = s.y1 + 10;
   }
 }
 
@@ -439,53 +437,17 @@ function stepAvoid(ch: { x: number; y: number }, tx: number, ty: number, step: n
     ch.y = ny;
     return;
   }
-  // attempt a lateral sidestep (perpendicular)
-  const perpX = ch.x - (dy / d) * step;
-  const perpY = ch.y + (dx / d) * step;
-  if (!blocked(perpX, perpY) && !blocked(perpX, ch.y)) {
-    ch.x = perpX;
-    ch.y = perpY;
+  const side = ch.x + Math.sign(tx - ch.x || 1) * step;
+  if (!blocked(side, ch.y)) {
+    ch.x = side;
     return;
   }
-  const perpX2 = ch.x + (dy / d) * step;
-  const perpY2 = ch.y - (dx / d) * step;
-  if (!blocked(perpX2, perpY2) && !blocked(perpX2, ch.y)) {
-    ch.x = perpX2;
-    ch.y = perpY2;
+  const front = ch.y + Math.abs(step);
+  if (!blocked(ch.x, front)) {
+    ch.y = front;
     return;
   }
-  // try moving horizontally or vertically if possible
-  const nxOnly = ch.x + (dx / Math.abs(dx || 1)) * step;
-  if (!blocked(nxOnly, ch.y)) {
-    ch.x = nxOnly;
-    return;
-  }
-  const nyOnly = ch.y + (dy / Math.abs(dy || 1)) * step;
-  if (!blocked(ch.x, nyOnly)) {
-    ch.y = nyOnly;
-    return;
-  }
-  // fallback: don't move into a blocked cell; higher-level logic should handle
-}
-
-function findNearbyOpen(world: World, x: number, y: number, radius = 80, tries = 36) {
-  // sample points around target, return the nearest unblocked point
-  let best: { x: number; y: number } | null = null;
-  let bestD = Infinity;
-  for (let i = 0; i < tries; i++) {
-    const ang = (i / tries) * Math.PI * 2;
-    const r = (i % 6) / 6 * radius + 6;
-    const px = Math.min(BOUNDS.x1, Math.max(BOUNDS.x0, x + Math.cos(ang) * r));
-    const py = Math.min(BOUNDS.y1, Math.max(BOUNDS.y0, y + Math.sin(ang) * r));
-    if (!blocked(px, py)) {
-      const d = Math.hypot(px - x, (py - y) * 1.15);
-      if (d < bestD) {
-        bestD = d;
-        best = { x: px, y: py };
-      }
-    }
-  }
-  return best;
+  if (!blocked(nx, ch.y)) ch.x = nx;
 }
 
 function openPoint(world: World) {
@@ -787,19 +749,6 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
   }
 
   if (task.kind === "goto") {
-    // if the destination is inside a solid, try to find a nearby reachable point
-    if (blocked(task.x, task.y)) {
-      const alt = findNearbyOpen(world, task.x, task.y, 96, 48);
-      if (alt) {
-        task.x = alt.x;
-        task.y = alt.y;
-      } else {
-        // can't reach destination; abandon the task
-        finish(ch);
-        return;
-      }
-    }
-
     const dx = task.x - ch.x;
     const dy = task.y - ch.y;
     const d = Math.hypot(dx, dy);
@@ -812,23 +761,17 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
       return;
     }
     const step = Math.min(d, speed * dt);
-    const beforeX = ch.x;
+    const before = ch.x;
     const intend: 1 | -1 = task.x >= ch.x ? 1 : -1;
-
     stepAvoid(ch, task.x, task.y, step);
-
     ch.pose = "walk";
     ch.walkPhase += dt * 2.35;
     avoidOthers(world, settings, ch, dt);
     clampWalk(ch);
-
-    const moved = ch.x - beforeX;
-    // update facing only when there is a clear horizontal motion; prefer actual movement
+    const moved = ch.x - before;
     if (Math.abs(moved) > 0.4) ch.facing = moved > 0 ? 1 : -1;
     else if (Math.abs(task.x - ch.x) > 12 && Math.abs(dx) > Math.abs(dy)) ch.facing = intend;
-
-    // stuck detection: when the character barely moves for a while
-    if (Math.abs(ch.x - beforeX) < 4 * dt) ch.stuck += dt;
+    if (Math.abs(ch.x - before) < 4 * dt) ch.stuck += dt;
     else ch.stuck = 0;
     if (ch.stuck > 2.8) {
       ch.stuck = 0;
@@ -1005,7 +948,7 @@ export function stepWorld(world: World, dt: number, settings: Settings, mutate: 
         ch.taskTime = 0;
         if (ch.reserved && ch.seat !== ch.reserved) ch.reserved = ch.seat;
         buildPlan(world, ch, settings, job.plan);
-        if (ch.sit > 0.35 && ch.queue[0]?.kind !== "stand" && job.plan !== "sit" && job.plan !== "wait") {
+        if (ch.sit > 0.35 and ch.queue[0]?.kind !== "stand" and job.plan !== "sit" and job.plan !== "wait") {
           ch.queue.unshift({ kind: "stand" });
         }
       }
