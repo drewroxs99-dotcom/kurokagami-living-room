@@ -12,20 +12,20 @@ import type {
 
 /** Feet land beside the four painted cushions and stay clear of both tea tables. */
 export const SEATS: Seat[] = [
-  { id: "left", x: 516, y: 814 },
-  { id: "right", x: 1090, y: 814 },
+  { id: "left", x: 520, y: 838 },
+  { id: "right", x: 1098, y: 838 },
   { id: "center", x: 800, y: 846 },
-  { id: "alcove", x: 365, y: 748 },
-  { id: "front", x: 1246, y: 746 },
+  { id: "alcove", x: 355, y: 738 },
+  { id: "front", x: 1278, y: 738 },
   { id: "screen", x: 1468, y: 824 },
 ];
 
 /** Match the four cushions painted in the hall artwork. */
 export const CUSHIONS = [
-  { id: "sideLeft", x: 365, y: 728, rx: 52, ry: 20 },
-  { id: "frontLeft", x: 516, y: 792, rx: 78, ry: 24 },
-  { id: "frontRight", x: 1090, y: 792, rx: 74, ry: 24 },
-  { id: "sideRight", x: 1246, y: 726, rx: 36, ry: 16 },
+  { id: "sideLeft", x: 355, y: 738, rx: 50, ry: 36 },
+  { id: "frontLeft", x: 520, y: 838, rx: 90, ry: 42 },
+  { id: "frontRight", x: 1098, y: 838, rx: 90, ry: 42 },
+  { id: "sideRight", x: 1278, y: 738, rx: 52, ry: 36 },
 ];
 
 /**
@@ -78,14 +78,14 @@ export const HEARTH = LOOKS[2];
 export const BOUNDS = { x0: 160, y0: 640, x1: 1500, y1: 858 };
 
 /** Painted tabletop and legs in hall.jpg; feet stay clear of both silhouettes. */
-const SOLIDS = [
+export const TABLE_BOUNDS = [
   { x0: 390, y0: 648, x1: 710, y1: 804 },
   { x0: 940, y0: 636, x1: 1224, y1: 802 },
 ];
 
 const WALK_CLEARANCE = 2;
 const ROUTE_CLEARANCE = WALK_CLEARANCE + 1;
-const NAVIGATION_OBSTACLES = SOLIDS.map((solid) => ({
+const NAVIGATION_OBSTACLES = TABLE_BOUNDS.map((solid) => ({
   x0: solid.x0 - WALK_CLEARANCE,
   y0: solid.y0 - WALK_CLEARANCE,
   x1: solid.x1 + WALK_CLEARANCE,
@@ -431,6 +431,39 @@ function clampWalk(ch: SimChar) {
 
 function blocked(x: number, y: number) {
   return NAVIGATION_OBSTACLES.some((s) => x > s.x0 && x < s.x1 && y > s.y0 && y < s.y1);
+}
+
+export function isWalkablePosition(x: number, y: number) {
+  return (
+    x >= BOUNDS.x0 &&
+    x <= BOUNDS.x1 &&
+    y >= BOUNDS.y0 &&
+    y <= BOUNDS.y1 &&
+    !blocked(x, y)
+  );
+}
+
+function walkableTarget(x: number, y: number) {
+  const target = {
+    x: Math.min(BOUNDS.x1, Math.max(BOUNDS.x0, x)),
+    y: Math.min(BOUNDS.y1, Math.max(BOUNDS.y0, y)),
+  };
+  if (isWalkablePosition(target.x, target.y)) return target;
+
+  const candidates = NAVIGATION_OBSTACLES.flatMap((solid) => [
+    { x: solid.x0 - 1, y: Math.min(solid.y1, Math.max(solid.y0, target.y)) },
+    { x: solid.x1 + 1, y: Math.min(solid.y1, Math.max(solid.y0, target.y)) },
+    { x: Math.min(solid.x1, Math.max(solid.x0, target.x)), y: solid.y0 - 1 },
+    { x: Math.min(solid.x1, Math.max(solid.x0, target.x)), y: solid.y1 + 1 },
+  ])
+    .filter((point) => isWalkablePosition(point.x, point.y))
+    .sort(
+      (a, b) =>
+        Math.hypot(a.x - target.x, a.y - target.y) -
+        Math.hypot(b.x - target.x, b.y - target.y),
+    );
+
+  return candidates[0] ?? { x: BOUNDS.x0, y: BOUNDS.y0 };
 }
 
 function segmentBlocked(x0: number, y0: number, x1: number, y1: number) {
@@ -832,6 +865,9 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
   }
 
   if (task.kind === "goto") {
+    const destination = walkableTarget(task.x, task.y);
+    task.x = destination.x;
+    task.y = destination.y;
     const dx = task.x - ch.x;
     const dy = task.y - ch.y;
     const d = Math.hypot(dx, dy);
