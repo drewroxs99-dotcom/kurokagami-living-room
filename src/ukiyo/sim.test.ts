@@ -16,8 +16,13 @@ function advance(
   }
 }
 
+const TABLES = [
+  { x0: 390, y0: 648, x1: 710, y1: 804 },
+  { x0: 940, y0: 636, x1: 1224, y1: 802 },
+];
+
 function insideTable(x: number, y: number) {
-  return x > 608 && x < 990 && y > 640 && y < 780;
+  return TABLES.some((table) => x > table.x0 && x < table.x1 && y > table.y0 && y < table.y1);
 }
 
 describe("household interactions", () => {
@@ -71,7 +76,7 @@ describe("household interactions", () => {
     assert.equal(world.pipeHolder, null);
   });
 
-  it("keeps people and pets out of the table while they move around the room", () => {
+  it("keeps people and pets out of both tables while they move around the room", () => {
     const world = createWorld(defaultSettings());
     advance(world, 30, defaultSettings(), (frame) => {
       for (const character of frame.chars) {
@@ -92,10 +97,10 @@ describe("household interactions", () => {
     }
   });
 
-  it("routes people around the tea table instead of walking across or getting stuck", () => {
+  it("routes people around the tea tables instead of walking across or getting stuck", () => {
     const crossings = [
-      { id: "ofuku", startX: 500, endX: 1120 },
-      { id: "kichi", startX: 1120, endX: 500 },
+      { id: "ofuku", startX: 300, endX: 1300 },
+      { id: "kichi", startX: 1300, endX: 300 },
     ];
 
     for (const crossing of crossings) {

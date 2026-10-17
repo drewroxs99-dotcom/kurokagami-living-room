@@ -77,7 +77,7 @@ function load(src: string): HTMLImageElement | null {
 }
 
 export function roomPlate(): HTMLImageElement | null {
-  return load("/prints/room.jpg");
+  return load("/prints/hall.jpg");
 }
 
 function drawTableForeground(ctx: CanvasRenderingContext2D, settings: Settings) {
@@ -93,25 +93,39 @@ function drawTableForeground(ctx: CanvasRenderingContext2D, settings: Settings) 
     const layerCtx = layer.getContext("2d");
     if (!layerCtx) return;
     layerCtx.beginPath();
-    layerCtx.moveTo(650, 647);
-    layerCtx.lineTo(949, 647);
-    layerCtx.lineTo(980, 676);
-    layerCtx.lineTo(982, 700);
-    layerCtx.lineTo(616, 700);
-    layerCtx.lineTo(616, 678);
+    layerCtx.moveTo(382, 646);
+    layerCtx.lineTo(715, 644);
+    layerCtx.lineTo(728, 671);
+    layerCtx.lineTo(711, 685);
+    layerCtx.lineTo(710, 708);
+    layerCtx.lineTo(686, 712);
+    layerCtx.lineTo(676, 772);
+    layerCtx.lineTo(660, 780);
+    layerCtx.lineTo(646, 773);
+    layerCtx.lineTo(640, 711);
+    layerCtx.lineTo(438, 711);
+    layerCtx.lineTo(434, 773);
+    layerCtx.lineTo(414, 780);
+    layerCtx.lineTo(400, 770);
+    layerCtx.lineTo(397, 699);
+    layerCtx.lineTo(379, 680);
     layerCtx.closePath();
-    layerCtx.rect(624, 698, 350, 26);
-    layerCtx.moveTo(637, 706);
-    layerCtx.lineTo(664, 706);
-    layerCtx.lineTo(664, 769);
-    layerCtx.lineTo(651, 778);
-    layerCtx.lineTo(640, 773);
-    layerCtx.closePath();
-    layerCtx.moveTo(939, 706);
-    layerCtx.lineTo(963, 706);
-    layerCtx.lineTo(963, 773);
-    layerCtx.lineTo(951, 779);
-    layerCtx.lineTo(939, 772);
+    layerCtx.moveTo(839, 642);
+    layerCtx.lineTo(1219, 638);
+    layerCtx.lineTo(1234, 667);
+    layerCtx.lineTo(1218, 684);
+    layerCtx.lineTo(1218, 706);
+    layerCtx.lineTo(1194, 711);
+    layerCtx.lineTo(1182, 770);
+    layerCtx.lineTo(1165, 779);
+    layerCtx.lineTo(1151, 771);
+    layerCtx.lineTo(1145, 710);
+    layerCtx.lineTo(875, 711);
+    layerCtx.lineTo(870, 772);
+    layerCtx.lineTo(850, 780);
+    layerCtx.lineTo(836, 770);
+    layerCtx.lineTo(834, 698);
+    layerCtx.lineTo(818, 678);
     layerCtx.closePath();
     layerCtx.clip();
     layerCtx.drawImage(room, 0, 0, 1600, 900);
@@ -264,7 +278,7 @@ function paintMask(img: ImageData) {
   return c;
 }
 
-/** Lantern paper and byobu gold, sampled from the room print. */
+/** Restrict material masks to the lantern paper and folding screen in hall.jpg. */
 function ensureMasks(room: HTMLImageElement): Masks | null {
   if (masks) return masks;
   const w = 1600;
@@ -284,23 +298,22 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
       const r = src[i];
       const g0 = src[i + 1];
       const b = src[i + 2];
-      const isLantern = x > 1096 && x < 1178 && y > 476 && y < 658;
-      if (isLantern && r > 158 && g0 > 108 && b > 48 && b < 205 && r - b > 38 && g0 - b > 12) {
+      const floorLantern = ((x - 486) / 36) ** 2 + ((y - 481) / 39) ** 2 <= 1;
+      const onLantern = (x > 748 && x < 912 && y > 122 && y < 234) || floorLantern;
+      if (onLantern && r > 158 && g0 > 108 && b > 48 && b < 205 && r - b > 38 && g0 - b > 12) {
         lantern.data[i] = lantern.data[i + 1] = lantern.data[i + 2] = lantern.data[i + 3] = 255;
       }
-      const inFoldingScreen =
-        y > 310 &&
-        y < 748 &&
-        x > 30 &&
-        x < 545 &&
-        x > 38 + (y - 294) * 0.08 &&
-        x < 540 - Math.max(0, y - 372) * 0.43;
+      const inFoldingScreen = x > 1252 && x < 1538 && y > 250 && y < 642;
       if (
         inFoldingScreen &&
         r > 88 &&
-        r - g0 > 12 &&
-        g0 - b > 10 &&
-        r - b > 24
+        r < 205 &&
+        g0 > 52 &&
+        g0 < 168 &&
+        b < 92 &&
+        r - b > 46 &&
+        g0 - b > 16 &&
+        r + g0 + b > 190
       ) {
         screen.data[i] = screen.data[i + 1] = screen.data[i + 2] = screen.data[i + 3] = 255;
       }
@@ -408,15 +421,12 @@ export function drawPlateCast(
       wisps(ctx, BRAZIER.x, BRAZIER.y - 10, world.time, "rgba(70,60,50,0.55)");
     },
   });
-  const pot = TEA_TABLES[0]?.pot;
-  if (pot) {
-    items.push({
-      y: pot.y,
-      depth: 781,
-      draw: () => drawPot(ctx, pot.x, pot.y, settings, ink),
-    });
-  }
   for (const table of TEA_TABLES) {
+    items.push({
+      y: table.pot.y,
+      depth: 781,
+      draw: () => drawPot(ctx, table.pot.x, table.pot.y, settings, ink),
+    });
     items.push({
       y: table.sweet.y,
       depth: 781,
@@ -550,34 +560,73 @@ function drawPot(ctx: CanvasRenderingContext2D, x: number, base: number, setting
   const glaze = pigmentHex(settings.env.glaze);
   ctx.save();
   ctx.translate(x, base);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#1c140f";
+  ctx.lineWidth = Math.max(1.2, ink.lw(1));
+
+  ctx.lineWidth = Math.max(2, ink.lw(2.4));
+  ctx.beginPath();
+  ctx.moveTo(-13, -24);
+  ctx.bezierCurveTo(-33, -31, -34, -7, -17, -8);
+  ctx.stroke();
+
+  ctx.lineWidth = Math.max(2, ink.lw(2.5));
+  ctx.beginPath();
+  ctx.moveTo(14, -21);
+  ctx.quadraticCurveTo(24, -23, 32, -34);
+  ctx.quadraticCurveTo(36, -38, 37, -34);
+  ctx.moveTo(14, -17);
+  ctx.quadraticCurveTo(26, -19, 34, -32);
+  ctx.stroke();
+
   ctx.fillStyle = glaze;
+  ctx.beginPath();
+  ctx.moveTo(-19, -23);
+  ctx.bezierCurveTo(-25, -15, -21, -4, -12, -2);
+  ctx.quadraticCurveTo(0, 2, 12, -2);
+  ctx.bezierCurveTo(22, -6, 24, -17, 18, -25);
+  ctx.quadraticCurveTo(0, -32, -19, -23);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  const glazeShade = ctx.createLinearGradient(-22, -18, 22, -8);
+  glazeShade.addColorStop(0, "rgba(0, 0, 0, 0.28)");
+  glazeShade.addColorStop(0.45, "rgba(255, 242, 210, 0.18)");
+  glazeShade.addColorStop(1, "rgba(0, 0, 0, 0.36)");
+  ctx.fillStyle = glazeShade;
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(246, 222, 179, 0.65)";
+  ctx.lineWidth = Math.max(0.8, ink.lw(0.9));
+  ctx.beginPath();
+  ctx.moveTo(-11, -23);
+  ctx.quadraticCurveTo(-15, -13, -10, -5);
+  ctx.stroke();
+
   ctx.strokeStyle = "#1c140f";
-  ctx.lineWidth = Math.max(1.2, ink.lw(1.1));
+  ctx.lineWidth = Math.max(1.1, ink.lw(1));
   ctx.beginPath();
-  ctx.ellipse(0, -4, 16, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -27, 14, 4, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.beginPath();
-  ctx.ellipse(0, -16, 24, 13, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -29, 11, 2.6, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#cfad77";
   ctx.fill();
   ctx.stroke();
   ctx.beginPath();
-  ctx.ellipse(0, -28, 13, 5, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -34, 3.2, 2.4, 0, 0, Math.PI * 2);
+  ctx.fillStyle = glaze;
   ctx.fill();
   ctx.stroke();
+
   ctx.beginPath();
-  ctx.ellipse(0, -32, 14, 3.6, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = "#1c140f";
-  ctx.fillRect(-1.5, -40, 3, 8);
-  ctx.strokeStyle = "#1c140f";
-  ctx.beginPath();
-  ctx.moveTo(20, -18);
-  ctx.quadraticCurveTo(36, -20, 38, -32);
+  ctx.ellipse(0, -2.5, 12, 2.6, 0, 0, Math.PI);
   ctx.stroke();
   ctx.beginPath();
-  ctx.arc(-22, -16, 10, Math.PI * 0.55, Math.PI * 1.5);
+  ctx.ellipse(0, -1, 15, 3.2, 0, 0, Math.PI);
   ctx.stroke();
   ctx.restore();
 }

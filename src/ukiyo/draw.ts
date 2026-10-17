@@ -192,7 +192,7 @@ function drawPrint(
     drawPlateCast(ctx, world, settings, selected, ink);
     drawMotes(ctx, world);
     drawHour(ctx, settings.env.hour, theme);
-    drawLanternLight(ctx, settings.env.lantern, world.time);
+    drawLanternLight(ctx, settings.env.lantern, world.time, pigmentHex(settings.env.lanternPaper));
     drawInkWeight(ctx, settings.env.inkWeight);
     drawVignette(ctx, settings.env.paperAge, theme);
     drawMargin(ctx, ink);
@@ -1011,7 +1011,12 @@ function drawHour(ctx: CanvasRenderingContext2D, hour: number, theme: Theme) {
   ctx.restore();
 }
 
-function drawLanternLight(ctx: CanvasRenderingContext2D, level: number, time: number) {
+function drawLanternLight(
+  ctx: CanvasRenderingContext2D,
+  level: number,
+  time: number,
+  color: string,
+) {
   ctx.save();
   const dim = Math.max(0, 0.62 - level);
   if (dim > 0.02) {
@@ -1022,11 +1027,18 @@ function drawLanternLight(ctx: CanvasRenderingContext2D, level: number, time: nu
   if (glow > 0.02) {
     ctx.globalCompositeOperation = "screen";
     const flick = 0.9 + Math.sin(time * 2.6) * 0.1;
-    for (const lamp of [{ x: 1137, y: 555, r: 220 }]) {
+    const hex = color.replace("#", "");
+    const rgb = [
+      Number.parseInt(hex.slice(0, 2), 16),
+      Number.parseInt(hex.slice(2, 4), 16),
+      Number.parseInt(hex.slice(4, 6), 16),
+    ].map((channel) => Math.round(channel + (255 - channel) * 0.58));
+    const rgba = (alpha: number) => `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`;
+    for (const lamp of [{ x: 486, y: 480, r: 250 }]) {
       const g = ctx.createRadialGradient(lamp.x, lamp.y, 8, lamp.x, lamp.y, lamp.r);
-      g.addColorStop(0, `rgba(255, 214, 150, ${glow * flick})`);
-      g.addColorStop(0.42, `rgba(255, 168, 84, ${glow * 0.3})`);
-      g.addColorStop(1, "rgba(255, 150, 60, 0)");
+      g.addColorStop(0, rgba(glow * flick));
+      g.addColorStop(0.42, rgba(glow * 0.3));
+      g.addColorStop(1, rgba(0));
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, 1600, 900);
     }
