@@ -99,6 +99,14 @@ describe("household interactions", () => {
     }
   });
 
+  it("keeps walkers out of the folding screen footprint and reachable viewing spots", () => {
+    assert.equal(isWalkablePosition(1300, 680), false);
+    assert.equal(isWalkablePosition(1500, 700), false);
+    assert.equal(isWalkablePosition(1300, 720), true);
+    assert.equal(isWalkablePosition(1260, 824), true);
+    assert.equal(isWalkablePosition(1468, 824), true);
+  });
+
   it("picks up the cup at the table it approached", () => {
     const world = createWorld(defaultSettings());
 
