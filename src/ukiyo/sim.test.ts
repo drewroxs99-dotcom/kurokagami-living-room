@@ -59,7 +59,7 @@ describe("household interactions", () => {
       ["left", "frontLeft", 22],
       ["right", "frontRight", 22],
       ["alcove", "sideLeft", 20],
-      ["front", "sideRight", 20],
+      ["front", "sideRight", 18],
     ] as const;
     for (const [seatId, cushionId, footOffset] of seatCushionPairs) {
       const seat = SEATS.find((candidate) => candidate.id === seatId);
@@ -69,6 +69,7 @@ describe("household interactions", () => {
       assert.equal(seat.x, cushion.x);
       assert.equal(seat.y - cushion.y, footOffset);
     }
+    assert.equal(CUSHIONS.find((cushion) => cushion.id === "sideRight")?.x, 1278);
     for (const table of TEA_TABLES) {
       for (const cup of table.cups) {
         assert.equal(insideTable(cup.x, cup.y), true, `${cup.id} is not on its tabletop`);

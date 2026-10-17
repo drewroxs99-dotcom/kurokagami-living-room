@@ -16,7 +16,7 @@ export const SEATS: Seat[] = [
   { id: "right", x: 1090, y: 814 },
   { id: "center", x: 800, y: 846 },
   { id: "alcove", x: 365, y: 748 },
-  { id: "front", x: 1246, y: 746 },
+  { id: "front", x: 1278, y: 746 },
   { id: "screen", x: 1468, y: 824 },
 ];
 
@@ -25,7 +25,7 @@ export const CUSHIONS = [
   { id: "sideLeft", x: 365, y: 728, rx: 52, ry: 20 },
   { id: "frontLeft", x: 516, y: 792, rx: 78, ry: 24 },
   { id: "frontRight", x: 1090, y: 792, rx: 74, ry: 24 },
-  { id: "sideRight", x: 1246, y: 726, rx: 36, ry: 16 },
+  { id: "sideRight", x: 1278, y: 728, rx: 52, ry: 22 },
 ];
 
 /**

@@ -84,7 +84,7 @@ function drawTableForeground(ctx: CanvasRenderingContext2D, settings: Settings) 
   const room = roomPlate();
   if (!room) return;
 
-  const key = `${settings.env.lanternPaper}:${settings.env.screen}:${settings.env.screenColor}`;
+  const key = `${settings.env.lanternPaper}:${settings.env.screen}:${settings.env.screenColor}:${settings.env.wood}:${settings.env.cushionPattern}`;
   let layer = tableForegroundLayers.get(key);
   if (!layer) {
     layer = document.createElement("canvas");
@@ -264,7 +264,11 @@ function dyePlate(
 
 type Ink = { lw: (px: number) => number };
 
-type Masks = { lantern: HTMLCanvasElement; screen: HTMLCanvasElement };
+type Masks = {
+  lantern: HTMLCanvasElement;
+  screen: HTMLCanvasElement;
+  cushions: HTMLCanvasElement;
+};
 let masks: Masks | null = null;
 const tintCache = new Map<string, HTMLCanvasElement>();
 
@@ -292,6 +296,7 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
   const src = sg.getImageData(0, 0, w, h).data;
   const lantern = sg.createImageData(w, h);
   const screen = sg.createImageData(w, h);
+  const cushions = sg.createImageData(w, h);
   const screenTop = new Float32Array(w);
   const screenBottom = new Float32Array(w);
   for (let x = 1124; x <= 1580; x++) {
@@ -308,32 +313,57 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
       const r = src[i];
       const g0 = src[i + 1];
       const b = src[i + 2];
-      const ceilingLantern = ((x - 830) / 83) ** 2 + ((y - 151) / 57) ** 2 <= 1;
-      const floorLantern = ((x - 486) / 37) ** 2 + ((y - 480) / 43) ** 2 <= 1;
+      const ceilingLantern = ((x - 830) / 70) ** 2 + ((y - 161) / 66) ** 2 <= 1;
+      const floorLantern = ((x - 486) / 32) ** 2 + ((y - 489) / 40) ** 2 <= 1;
       const onLantern = ceilingLantern || floorLantern;
-      if (onLantern && r > 145 && g0 > 92 && b > 35 && b < 205 && r - b > 32 && g0 - b > 8) {
+      if (
+        onLantern &&
+        r > 48 &&
+        g0 > 36 &&
+        b > 18 &&
+        r - b > 18 &&
+        g0 - b > 4 &&
+        r > g0 * 0.92
+      ) {
         lantern.data[i] = lantern.data[i + 1] = lantern.data[i + 2] = lantern.data[i + 3] = 255;
       }
       const inFoldingScreen =
-        x >= 1124 && x <= 1580 && y >= screenTop[x] && y <= screenBottom[x];
+        x >= 1132 && x <= 1572 && y >= screenTop[x] + 7 && y <= screenBottom[x] - 8;
       if (
         inFoldingScreen &&
-        r > 55 &&
-        r < 220 &&
-        g0 > 30 &&
-        g0 < 190 &&
-        b < 135 &&
-        r - b > 28 &&
-        r + g0 + b > 150
+        r > 42 &&
+        g0 > 24 &&
+        b < 150 &&
+        r - b > 20 &&
+        g0 - b > 7 &&
+        r > g0 * 0.92
       ) {
         screen.data[i] = screen.data[i + 1] = screen.data[i + 2] = screen.data[i + 3] = 255;
+      }
+      const insideCushion =
+        r > 48 &&
+        g0 > 28 &&
+        r - g0 > 5 &&
+        g0 - b > 3 &&
+        r - b > 15 &&
+        CUSHIONS.some(
+          (cushion) =>
+            Math.abs(x - cushion.x) <= cushion.rx &&
+            Math.abs(y - cushion.y) <= cushion.ry &&
+            ((x - cushion.x) / Math.max(1, cushion.rx - 3)) ** 2 +
+              ((y - cushion.y) / Math.max(1, cushion.ry - 3)) ** 2 <=
+              1,
+        );
+      if (insideCushion) {
+        cushions.data[i] = cushions.data[i + 1] = cushions.data[i + 2] = cushions.data[i + 3] = 255;
       }
     }
   }
   const lanternC = paintMask(lantern);
   const screenC = paintMask(screen);
-  if (!lanternC || !screenC) return null;
-  masks = { lantern: lanternC, screen: screenC };
+  const cushionsC = paintMask(cushions);
+  if (!lanternC || !screenC || !cushionsC) return null;
+  masks = { lantern: lanternC, screen: screenC, cushions: cushionsC };
   return masks;
 }
 
@@ -418,12 +448,6 @@ export function drawPlateCast(
   const items: Item[] = [];
   items.push({ y: 120, draw: () => drawRoomTints(ctx, settings) });
   items.push({ y: 560, draw: () => drawWallArt(ctx, settings) });
-  for (const cushion of CUSHIONS) {
-    items.push({
-      y: cushion.y,
-      draw: () => drawCushion(ctx, cushion.x, cushion.y, cushion.rx, cushion.ry, settings, ink),
-    });
-  }
   items.push({ y: 780, draw: () => drawTableForeground(ctx, settings) });
   items.push({
     y: BRAZIER.y,
@@ -481,67 +505,39 @@ function drawRoomTints(ctx: CanvasRenderingContext2D, settings: Settings) {
   if (!m) return;
   if (settings.env.lanternPaper !== "ochre") {
     ctx.save();
-    ctx.globalAlpha = 0.34;
+    ctx.globalAlpha = 0.25;
     ctx.globalCompositeOperation = "multiply";
     ctx.drawImage(coloredMask(m.lantern, pigmentHex(settings.env.lanternPaper), "lamp"), 0, 0);
     ctx.restore();
   }
+  if (settings.env.wood !== "persimmon") {
+    ctx.save();
+    ctx.globalAlpha = 0.42;
+    ctx.globalCompositeOperation = "color";
+    ctx.drawImage(coloredMask(m.cushions, pigmentHex(settings.env.wood), "cushions"), 0, 0);
+    ctx.restore();
+  }
+  if (settings.env.cushionPattern !== "solid") {
+    ctx.save();
+    ctx.globalAlpha = 0.16;
+    ctx.globalCompositeOperation = "multiply";
+    ctx.drawImage(patternOnMask(m.cushions, settings.env.cushionPattern, "cushions"), 0, 0);
+    ctx.restore();
+  }
   if (settings.env.screen !== "solid") {
     ctx.save();
-    ctx.globalAlpha = 0.24;
+    ctx.globalAlpha = 0.12;
+    ctx.globalCompositeOperation = "multiply";
     ctx.drawImage(patternOnMask(m.screen, settings.env.screen, "screen"), 0, 0);
     ctx.restore();
   }
   if (settings.env.screenColor !== "ochre") {
     ctx.save();
-    ctx.globalAlpha = 0.3;
-    ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = 0.24;
+    ctx.globalCompositeOperation = "color";
     ctx.drawImage(coloredMask(m.screen, pigmentHex(settings.env.screenColor), "screen"), 0, 0);
     ctx.restore();
   }
-}
-
-function drawCushion(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  rx: number,
-  ry: number,
-  settings: Settings,
-  ink: Ink,
-) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.fillStyle = pigmentHex(settings.env.wood);
-  ctx.beginPath();
-  ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-  ctx.globalAlpha = 0.62;
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.strokeStyle = "#1c140f";
-  ctx.lineWidth = ink.lw(1.15);
-  ctx.stroke();
-  const tile = patternTile(settings.env.cushionPattern);
-  if (tile && settings.env.cushionPattern !== "solid") {
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(0, 0, rx - 2, ry - 2, 0, 0, Math.PI * 2);
-    ctx.clip();
-    const pattern = ctx.createPattern(tile, "repeat");
-    if (pattern) {
-      pattern.setTransform(new DOMMatrix().scale(0.22, 0.22));
-      ctx.globalAlpha = 0.28;
-      ctx.fillStyle = pattern;
-      ctx.fillRect(-rx, -ry, rx * 2, ry * 2);
-    }
-    ctx.restore();
-  }
-  ctx.strokeStyle = "rgba(255, 244, 230, 0.24)";
-  ctx.lineWidth = ink.lw(0.8);
-  ctx.beginPath();
-  ctx.ellipse(0, 0, rx * (34 / 46), ry * (10 / 16), 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
 }
 
 function drawWallArt(ctx: CanvasRenderingContext2D, settings: Settings) {
