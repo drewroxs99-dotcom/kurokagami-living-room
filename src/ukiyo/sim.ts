@@ -77,11 +77,26 @@ export const BRAZIER = { x: 828, y: 636 };
 export const HEARTH = LOOKS[2];
 export const BOUNDS = { x0: 300, y0: 640, x1: 1500, y1: 858 };
 
-/** Tatami only. The whole table, including the mats painted between the legs, is closed so nobody stands in the lacquer. */
-export const TABLE_BOUNDS = [
-  { x0: 379, y0: 644, x1: 728, y1: 804 },
-  { x0: 818, y0: 636, x1: 1234, y1: 802 },
+/** Traced lacquer silhouette: top, apron, and both legs. Shared by the walk cut and the foreground clip. */
+export const TABLE_CUTS: Array<Array<[number, number]>> = [
+  [
+    [392, 648], [730, 644], [748, 670], [732, 688], [722, 710], [710, 714],
+    [702, 768], [688, 788], [670, 780], [662, 714], [455, 714], [448, 768],
+    [434, 788], [416, 780], [408, 714], [396, 700], [388, 678],
+  ],
+  [
+    [865, 654], [1238, 650], [1255, 676], [1242, 694], [1232, 716], [1220, 720],
+    [1212, 774], [1198, 794], [1180, 786], [1172, 720], [955, 720], [947, 774],
+    [933, 794], [915, 786], [907, 720], [895, 706], [865, 682],
+  ],
 ];
+function polyBounds(poly: Array<[number, number]>) {
+  const xs = poly.map((p) => p[0]);
+  const ys = poly.map((p) => p[1]);
+  return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+}
+/** Axis boxes of the cuts. Used for "on the table" checks and route corners. */
+export const TABLE_BOUNDS = TABLE_CUTS.map(polyBounds);
 export const SCREEN_BOUNDS = { x0: 1124, y0: 640, x1: 1580, y1: 710 };
 
 const WALK_CLEARANCE = 2;
@@ -432,8 +447,32 @@ function clampWalk(ch: SimChar) {
   ch.y = Math.min(BOUNDS.y1, Math.max(BOUNDS.y0, ch.y));
 }
 
+function pointInPoly(x: number, y: number, poly: Array<[number, number]>) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi + 0.0001) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function onTableCut(x: number, y: number) {
+  const pad = 6;
+  return TABLE_CUTS.some(
+    (poly) =>
+      pointInPoly(x, y, poly) ||
+      pointInPoly(x + pad, y, poly) ||
+      pointInPoly(x - pad, y, poly) ||
+      pointInPoly(x, y + pad, poly) ||
+      pointInPoly(x, y - pad, poly),
+  );
+}
+
 function blocked(x: number, y: number) {
-  return NAVIGATION_OBSTACLES.some((s) => x > s.x0 && x < s.x1 && y > s.y0 && y < s.y1);
+  if (onTableCut(x, y)) return true;
+  const screen = SCREEN_BOUNDS;
+  return x > screen.x0 && x < screen.x1 && y > screen.y0 && y < screen.y1;
 }
 
 export function isWalkablePosition(x: number, y: number) {
@@ -470,7 +509,14 @@ function walkableTarget(x: number, y: number) {
 }
 
 function segmentBlocked(x0: number, y0: number, x1: number, y1: number) {
-  return NAVIGATION_OBSTACLES.some((solid) => {
+  const span = Math.hypot(x1 - x0, y1 - y0);
+  const steps = Math.max(1, Math.ceil(span / 10));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    if (onTableCut(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return true;
+  }
+  const solids = [SCREEN_BOUNDS];
+  return solids.some((solid) => {
     const dx = x1 - x0;
     const dy = y1 - y0;
     let enter = 0;
