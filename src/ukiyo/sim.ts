@@ -10,50 +10,48 @@ import type {
   World,
 } from "./types";
 
-/** Feet land on the front edge of the cushions gathered around the table. */
+/** Feet land beside the four painted cushions and stay clear of both tea tables. */
 export const SEATS: Seat[] = [
-  { id: "left", x: 530, y: 812 },
-  { id: "right", x: 1010, y: 828 },
-  { id: "center", x: 770, y: 838 },
-  { id: "alcove", x: 650, y: 828 },
-  { id: "front", x: 890, y: 838 },
-  { id: "screen", x: 1130, y: 812 },
+  { id: "left", x: 516, y: 814 },
+  { id: "right", x: 1090, y: 814 },
+  { id: "center", x: 800, y: 846 },
+  { id: "alcove", x: 365, y: 748 },
+  { id: "front", x: 1246, y: 746 },
+  { id: "screen", x: 1468, y: 824 },
 ];
 
-/** A shallow arc keeps every cushion in the open floor just in front of the table. */
+/** Match the four cushions painted in the hall artwork. */
 export const CUSHIONS = [
-  { id: "left", x: 530, y: 792, rx: 46, ry: 16 },
-  { id: "alcove", x: 650, y: 808, rx: 46, ry: 16 },
-  { id: "center", x: 770, y: 818, rx: 46, ry: 16 },
-  { id: "front", x: 890, y: 818, rx: 46, ry: 16 },
-  { id: "right", x: 1010, y: 808, rx: 46, ry: 16 },
-  { id: "screen", x: 1130, y: 792, rx: 46, ry: 16 },
+  { id: "sideLeft", x: 365, y: 728, rx: 52, ry: 20 },
+  { id: "frontLeft", x: 516, y: 792, rx: 78, ry: 24 },
+  { id: "frontRight", x: 1090, y: 792, rx: 74, ry: 24 },
+  { id: "sideRight", x: 1246, y: 726, rx: 36, ry: 16 },
 ];
 
 /**
- * Coordinates map directly to the painted low table in room.jpg.
+ * Prop contact points map to the two painted lacquer tables in hall.jpg.
  */
 export const TEA_TABLES = [
   {
     id: "left" as const,
-    pot: { x: 800, y: 676 },
+    pot: { x: 538, y: 708 },
     cups: [
-      { id: "l1", x: 650, y: 684 },
-      { id: "l2", x: 705, y: 684 },
+      { id: "l1", x: 466, y: 714 },
+      { id: "l2", x: 612, y: 712 },
     ],
-    sweet: { x: 758, y: 686 },
-    approach: { x: 710, y: 814, face: 1 as const },
+    sweet: { x: 574, y: 716 },
+    approach: { x: 292, y: 828, face: 1 as const },
     seat: "left",
   },
   {
     id: "right" as const,
-    pot: { x: 800, y: 676 },
+    pot: { x: 1082, y: 700 },
     cups: [
-      { id: "r1", x: 895, y: 684 },
-      { id: "r2", x: 950, y: 684 },
+      { id: "r1", x: 1000, y: 706 },
+      { id: "r2", x: 1168, y: 704 },
     ],
-    sweet: { x: 842, y: 686 },
-    approach: { x: 890, y: 814, face: -1 as const },
+    sweet: { x: 1132, y: 708 },
+    approach: { x: 1364, y: 828, face: -1 as const },
     seat: "right",
   },
 ];
@@ -79,8 +77,11 @@ export const BRAZIER = { x: 828, y: 636 };
 export const HEARTH = LOOKS[2];
 export const BOUNDS = { x0: 160, y0: 640, x1: 1500, y1: 858 };
 
-/** The painted low table and legs in room.jpg; feet stay clear of its silhouette. */
-const SOLIDS = [{ x0: 608, y0: 640, x1: 990, y1: 780 }];
+/** Painted tabletop and legs in hall.jpg; feet stay clear of both silhouettes. */
+const SOLIDS = [
+  { x0: 390, y0: 648, x1: 710, y1: 804 },
+  { x0: 940, y0: 636, x1: 1224, y1: 802 },
+];
 
 const WALK_CLEARANCE = 2;
 const ROUTE_CLEARANCE = WALK_CLEARANCE + 1;
