@@ -10,22 +10,22 @@ import type {
   World,
 } from "./types";
 
-/** Feet land beside the four painted cushions and stay clear of both tea tables. */
+/** Feet land just in front of painted cushions, with distinct spots around both tables. */
 export const SEATS: Seat[] = [
-  { id: "left", x: 520, y: 838 },
-  { id: "right", x: 1098, y: 838 },
+  { id: "left", x: 516, y: 814 },
+  { id: "right", x: 1090, y: 814 },
   { id: "center", x: 800, y: 846 },
-  { id: "alcove", x: 355, y: 738 },
-  { id: "front", x: 1278, y: 738 },
+  { id: "alcove", x: 365, y: 748 },
+  { id: "front", x: 1246, y: 746 },
   { id: "screen", x: 1468, y: 824 },
 ];
 
 /** Match the four cushions painted in the hall artwork. */
 export const CUSHIONS = [
-  { id: "sideLeft", x: 355, y: 738, rx: 50, ry: 36 },
-  { id: "frontLeft", x: 520, y: 838, rx: 90, ry: 42 },
-  { id: "frontRight", x: 1098, y: 838, rx: 90, ry: 42 },
-  { id: "sideRight", x: 1278, y: 738, rx: 52, ry: 36 },
+  { id: "sideLeft", x: 365, y: 728, rx: 52, ry: 20 },
+  { id: "frontLeft", x: 516, y: 792, rx: 78, ry: 24 },
+  { id: "frontRight", x: 1090, y: 792, rx: 74, ry: 24 },
+  { id: "sideRight", x: 1246, y: 726, rx: 36, ry: 16 },
 ];
 
 /**
@@ -64,7 +64,7 @@ export const LOOKS: { id: string; x: number; y: number; face: 1 | -1; label: str
   { id: "scroll", x: 824, y: 840, face: 1, label: "the scroll" },
   { id: "hearth", x: 804, y: 842, face: 1, label: "the brazier" },
   { id: "screen", x: 1436, y: 836, face: -1, label: "the screen" },
-  { id: "lantern", x: 292, y: 808, face: 1, label: "the floor lantern" },
+  { id: "lantern", x: 344, y: 668, face: 1, label: "the floor lantern" },
   { id: "flowers", x: 756, y: 846, face: -1, label: "the flowers" },
 ];
 
@@ -79,8 +79,8 @@ export const BOUNDS = { x0: 160, y0: 640, x1: 1500, y1: 858 };
 
 /** Painted tabletop and legs in hall.jpg; feet stay clear of both silhouettes. */
 export const TABLE_BOUNDS = [
-  { x0: 390, y0: 648, x1: 710, y1: 804 },
-  { x0: 940, y0: 636, x1: 1224, y1: 802 },
+  { x0: 379, y0: 644, x1: 728, y1: 804 },
+  { x0: 818, y0: 636, x1: 1234, y1: 802 },
 ];
 
 const WALK_CLEARANCE = 2;
@@ -96,10 +96,12 @@ const ROUTE_CORNERS = NAVIGATION_OBSTACLES.flatMap((solid) => [
   { x: solid.x1 + ROUTE_CLEARANCE, y: solid.y0 - ROUTE_CLEARANCE },
   { x: solid.x0 - ROUTE_CLEARANCE, y: solid.y1 + ROUTE_CLEARANCE },
   { x: solid.x1 + ROUTE_CLEARANCE, y: solid.y1 + ROUTE_CLEARANCE },
-]).filter(
-  (point) =>
-    point.x >= BOUNDS.x0 && point.x <= BOUNDS.x1 && point.y >= BOUNDS.y0 && point.y <= BOUNDS.y1,
-);
+])
+  .map((point) => ({
+    x: Math.min(BOUNDS.x1, Math.max(BOUNDS.x0, point.x)),
+    y: Math.min(BOUNDS.y1, Math.max(BOUNDS.y0, point.y)),
+  }))
+  .filter((point) => isWalkablePosition(point.x, point.y));
 
 const LINES = [
   "The paper drinks the lamplight.",
@@ -174,7 +176,7 @@ export function createWorld(settings: Settings): World {
     reserved: "left",
     queue: [{ kind: "wait", seconds: 2.4 }],
   });
-  const hanae = makeChar("hanae", 900, 840, 1, {
+  const hanae = makeChar("hanae", 800, 646, 1, {
     hold: "fan",
     pose: "walk",
     walkPhase: 0.35,
@@ -213,7 +215,7 @@ export function createWorld(settings: Settings): World {
       { kind: "wait", seconds: 1.8 },
     ],
   });
-  const kichi = makeChar("kichi", 240, 820, 1, {
+  const kichi = makeChar("kichi", 220, 660, 1, {
     pose: "walk",
     walkPhase: 0.55,
     queue: [
@@ -232,7 +234,7 @@ export function createWorld(settings: Settings): World {
       { kind: "pose", pose: "gesture", seconds: 2.4 },
     ],
   });
-  const otsu = makeChar("otsu", 188, 830, 1, {
+  const otsu = makeChar("otsu", 400, 830, 1, {
     pose: "walk",
     queue: [
       { kind: "goto", x: SEATS[3].x, y: SEATS[3].y },
@@ -816,15 +818,19 @@ function choosePlan(world: World, ch: SimChar, settings: Settings): PlanName {
 }
 
 function avoidOthers(world: World, settings: Settings, ch: SimChar, dt: number) {
-  if (ch.sit > 0.6) return;
   for (const o of world.chars) {
-    if (o.id === ch.id || o.sit > 0.6 || !here(settings, o.id)) continue;
-    const dx = ch.x - o.x;
-    const dy = ch.y - o.y;
-    const d = Math.hypot(dx, dy * 1.4);
-    if (d > 0.1 && d < 96) {
-      const x = ch.x + (dx / d) * 70 * dt;
-      const y = ch.y + (dy / d) * 42 * dt;
+    if (o.id === ch.id || !here(settings, o.id)) continue;
+    let dx = ch.x - o.x;
+    let dy = ch.y - o.y;
+    let d = Math.hypot(dx, dy * 1.4);
+    if (d < 118) {
+      if (d < 0.1) {
+        dx = ch.id < o.id ? -1 : 1;
+        dy = 0;
+        d = 1;
+      }
+      const x = ch.x + (dx / d) * 132 * dt;
+      const y = ch.y + (dy / d) * 90 * dt;
       if (
         x >= BOUNDS.x0 &&
         x <= BOUNDS.x1 &&

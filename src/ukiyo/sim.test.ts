@@ -56,18 +56,18 @@ describe("household interactions", () => {
       );
     }
     const seatCushionPairs = [
-      ["left", "frontLeft"],
-      ["right", "frontRight"],
-      ["alcove", "sideLeft"],
-      ["front", "sideRight"],
+      ["left", "frontLeft", 22],
+      ["right", "frontRight", 22],
+      ["alcove", "sideLeft", 20],
+      ["front", "sideRight", 20],
     ] as const;
-    for (const [seatId, cushionId] of seatCushionPairs) {
+    for (const [seatId, cushionId, footOffset] of seatCushionPairs) {
       const seat = SEATS.find((candidate) => candidate.id === seatId);
       const cushion = CUSHIONS.find((candidate) => candidate.id === cushionId);
       assert.ok(seat);
       assert.ok(cushion);
       assert.equal(seat.x, cushion.x);
-      assert.equal(seat.y, cushion.y);
+      assert.equal(seat.y - cushion.y, footOffset);
     }
     for (const table of TEA_TABLES) {
       for (const cup of table.cups) {
@@ -213,6 +213,34 @@ describe("household interactions", () => {
     });
 
     assert.ok(Math.abs(ofuku.x - 550) < 7);
-    assert.ok(Math.abs(ofuku.y - 645) < 7);
+    assert.ok(Math.abs(ofuku.y - 641) < 7);
+  });
+
+  it("keeps moving people from passing through someone who is seated", () => {
+    const settings = defaultSettings();
+    for (const character of settings.chars) {
+      character.present = character.id === "komachi" || character.id === "hanae";
+    }
+    const world = createWorld(settings);
+    const seated = world.chars.find((character) => character.id === "komachi");
+    const walker = world.chars.find((character) => character.id === "hanae");
+    assert.ok(seated);
+    assert.ok(walker);
+    seated.queue = [{ kind: "wait", seconds: 30 }];
+    walker.x = 250;
+    walker.y = seated.y;
+    walker.sit = 0;
+    walker.pose = "walk";
+    walker.queue = [
+      { kind: "goto", x: 780, y: seated.y },
+      { kind: "wait", seconds: 30 },
+    ];
+
+    advance(world, 3, settings);
+
+    assert.ok(
+      Math.hypot(walker.x - seated.x, (walker.y - seated.y) * 1.4) >= 108,
+      "the walker overlapped the seated person",
+    );
   });
 });
