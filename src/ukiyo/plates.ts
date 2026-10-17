@@ -288,19 +288,18 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
       if (isLantern && r > 158 && g0 > 108 && b > 48 && b < 205 && r - b > 38 && g0 - b > 12) {
         lantern.data[i] = lantern.data[i + 1] = lantern.data[i + 2] = lantern.data[i + 3] = 255;
       }
+      const onShoji =
+        (x > 500 && x < 680 && y > 260 && y < 635) ||
+        (x > 940 && x < 1245 && y > 250 && y < 642) ||
+        (x > 1252 && x < 1538 && y > 250 && y < 642);
       if (
-        x > 1252 &&
-        x < 1538 &&
-        y > 250 &&
-        y < 642 &&
-        r > 88 &&
-        r < 205 &&
-        g0 > 52 &&
-        g0 < 168 &&
-        b < 92 &&
-        r - b > 46 &&
-        g0 - b > 16 &&
-        r + g0 + b > 190
+        onShoji &&
+        r > 105 &&
+        g0 > 85 &&
+        b > 62 &&
+        r - b > 10 &&
+        r - b < 112 &&
+        g0 - b < 78
       ) {
         screen.data[i] = screen.data[i + 1] = screen.data[i + 2] = screen.data[i + 3] = 255;
       }
@@ -342,7 +341,7 @@ function patternOnMask(mask: HTMLCanvasElement, id: PatternId, name: string) {
   if (!g || !tile) return c;
   const pat = g.createPattern(tile, "repeat");
   if (!pat) return c;
-  pat.setTransform(new DOMMatrix().scale(1.35, 1.35));
+  pat.setTransform(new DOMMatrix().scale(0.62, 0.62));
   g.fillStyle = pat;
   g.fillRect(0, 0, 1600, 900);
   g.globalCompositeOperation = "destination-in";
@@ -397,7 +396,7 @@ export function drawPlateCast(
   for (const cushion of CUSHIONS) {
     items.push({
       y: cushion.y,
-      draw: () => drawCushion(ctx, cushion.x, cushion.y, cushion.rx, cushion.ry, settings),
+      draw: () => drawCushion(ctx, cushion.x, cushion.y, cushion.rx, cushion.ry, settings, ink),
     });
   }
   items.push({ y: 780, draw: () => drawTableForeground(ctx, settings) });
@@ -467,21 +466,30 @@ function drawRoomTints(ctx: CanvasRenderingContext2D, settings: Settings) {
   }
   if (settings.env.screen !== "solid") {
     ctx.save();
-    ctx.globalAlpha = 0.42;
+    ctx.globalAlpha = 0.58;
     ctx.drawImage(patternOnMask(m.screen, settings.env.screen, "screen"), 0, 0);
     ctx.restore();
   }
 }
 
-function drawCushion(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, settings: Settings) {
+function drawCushion(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  settings: Settings,
+  ink: Ink,
+) {
   ctx.save();
   ctx.translate(x, y);
   ctx.fillStyle = pigmentHex(settings.env.wood);
-  ctx.strokeStyle = "rgba(37, 23, 18, 0.82)";
-  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = "#1c140f";
+  ctx.lineWidth = ink.lw(1.15);
+  ctx.stroke();
   const tile = patternTile(settings.env.cushionPattern);
   if (tile && settings.env.cushionPattern !== "solid") {
     ctx.save();
@@ -490,18 +498,17 @@ function drawCushion(ctx: CanvasRenderingContext2D, x: number, y: number, rx: nu
     ctx.clip();
     const pattern = ctx.createPattern(tile, "repeat");
     if (pattern) {
-      pattern.setTransform(new DOMMatrix().scale(1.2, 1.2));
-      ctx.globalAlpha = 0.3;
+      pattern.setTransform(new DOMMatrix().scale(0.22, 0.22));
+      ctx.globalAlpha = 0.58;
       ctx.fillStyle = pattern;
       ctx.fillRect(-rx, -ry, rx * 2, ry * 2);
     }
     ctx.restore();
   }
-  ctx.stroke();
+  ctx.strokeStyle = "rgba(255, 244, 230, 0.35)";
+  ctx.lineWidth = ink.lw(0.8);
   ctx.beginPath();
-  ctx.ellipse(0, 0, rx * 0.78, ry * 0.67, 0, 0.16, Math.PI * 0.84);
-  ctx.strokeStyle = "rgba(245, 220, 177, 0.3)";
-  ctx.lineWidth = 1;
+  ctx.ellipse(0, 0, rx * (34 / 46), ry * (10 / 16), 0, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
 }

@@ -10,24 +10,24 @@ import type {
   World,
 } from "./types";
 
-/** Foot positions for cushions placed on the foreground tatami. */
+/** Feet land on the front edge of the cushions gathered around the table. */
 export const SEATS: Seat[] = [
-  { id: "left", x: 670, y: 816 },
-  { id: "right", x: 920, y: 816 },
-  { id: "center", x: 800, y: 848 },
-  { id: "alcove", x: 420, y: 796 },
-  { id: "front", x: 1150, y: 810 },
-  { id: "screen", x: 1430, y: 842 },
+  { id: "left", x: 530, y: 812 },
+  { id: "right", x: 1010, y: 828 },
+  { id: "center", x: 770, y: 838 },
+  { id: "alcove", x: 650, y: 828 },
+  { id: "front", x: 890, y: 838 },
+  { id: "screen", x: 1130, y: 812 },
 ];
 
-/** Visible cushions follow the painted floor plane from the table to the viewer. */
+/** A shallow arc keeps every cushion in the open floor just in front of the table. */
 export const CUSHIONS = [
-  { id: "alcove", x: 420, y: 777, rx: 44, ry: 17 },
-  { id: "left", x: 670, y: 795, rx: 58, ry: 21 },
-  { id: "center", x: 800, y: 827, rx: 73, ry: 26 },
-  { id: "right", x: 920, y: 795, rx: 58, ry: 21 },
-  { id: "front", x: 1150, y: 790, rx: 52, ry: 19 },
-  { id: "screen", x: 1430, y: 821, rx: 45, ry: 17 },
+  { id: "left", x: 530, y: 792, rx: 46, ry: 16 },
+  { id: "alcove", x: 650, y: 808, rx: 46, ry: 16 },
+  { id: "center", x: 770, y: 818, rx: 46, ry: 16 },
+  { id: "front", x: 890, y: 818, rx: 46, ry: 16 },
+  { id: "right", x: 1010, y: 808, rx: 46, ry: 16 },
+  { id: "screen", x: 1130, y: 792, rx: 46, ry: 16 },
 ];
 
 /**
