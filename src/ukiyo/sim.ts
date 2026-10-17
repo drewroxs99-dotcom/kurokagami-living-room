@@ -398,7 +398,7 @@ function stepPets(world: World, settings: Settings, dt: number) {
         pet.ty = BOUNDS.y0 + 40 + world.rng() * (BOUNDS.y1 - BOUNDS.y0 - 40);
       }
       if (blocked(pet.tx, pet.ty)) {
-        const open = openPoint(world);
+        const open = openPoint(world, settings, pet);
         pet.tx = open.x;
         pet.ty = open.y;
       }
@@ -542,8 +542,14 @@ function nextWaypoint(start: { x: number; y: number }, end: { x: number; y: numb
   return nodes[waypoint];
 }
 
-function stepAvoid(ch: { x: number; y: number }, tx: number, ty: number, step: number) {
-  const waypoint = nextWaypoint(ch, { x: tx, y: ty });
+function stepAvoid(
+  ch: { x: number; y: number },
+  tx: number,
+  ty: number,
+  step: number,
+  route?: { x: number; y: number } | null,
+) {
+  const waypoint = route === undefined ? nextWaypoint(ch, { x: tx, y: ty }) : route;
   if (!waypoint) return;
   const dx = waypoint.x - ch.x;
   const dy = waypoint.y - ch.y;
@@ -558,7 +564,7 @@ function stepAvoid(ch: { x: number; y: number }, tx: number, ty: number, step: n
   }
 }
 
-function openPoint(world: World, settings: Settings, ch: SimChar) {
+function openPoint(world: World, settings: Settings, mover: Pick<SimChar, "id" | "x" | "y"> | Pet) {
   let best: { x: number; y: number } | null = null;
   let bestScore = -Infinity;
   for (let i = 0; i < 32; i++) {
@@ -567,10 +573,10 @@ function openPoint(world: World, settings: Settings, ch: SimChar) {
     if (blocked(x, y)) continue;
     let nearest = Infinity;
     for (const other of world.chars) {
-      if (other.id === ch.id || !here(settings, other.id)) continue;
+      if (other.id === mover.id || !here(settings, other.id)) continue;
       nearest = Math.min(nearest, Math.hypot(x - other.x, (y - other.y) * 1.4));
     }
-    const distance = Math.hypot(x - ch.x, (y - ch.y) * 1.2);
+    const distance = Math.hypot(x - mover.x, (y - mover.y) * 1.2);
     const score = Math.min(nearest, 180) - distance * 0.12;
     if (score > bestScore) {
       best = { x, y };
@@ -980,7 +986,7 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
         : ch.facing;
     const beforeX = ch.x;
     const beforeY = ch.y;
-    stepAvoid(ch, task.x, task.y, step);
+    stepAvoid(ch, task.x, task.y, step, waypoint);
     ch.pose = "walk";
     ch.walkPhase += dt * 2.35;
     avoidOthers(world, settings, ch, task, dt);
