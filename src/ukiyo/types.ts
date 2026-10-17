@@ -67,6 +67,8 @@ export type EnvSettings = {
   petals: boolean;
   theme: ThemeId;
   screen: PatternId;
+  cushionPattern: PatternId;
+  wallArt: string;
   wood: string;
   glaze: string;
   lanternPaper: string;
@@ -96,7 +98,7 @@ export type Task =
   | { kind: "face"; dir: 1 | -1 }
   | { kind: "sit"; seat: string }
   | { kind: "stand" }
-  | { kind: "takeCup" }
+  | { kind: "takeCup"; cupId?: string }
   | { kind: "placeCup" }
   | { kind: "drink" }
   | { kind: "takePipe" }

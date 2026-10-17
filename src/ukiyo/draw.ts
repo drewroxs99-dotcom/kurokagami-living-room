@@ -1022,10 +1022,7 @@ function drawLanternLight(ctx: CanvasRenderingContext2D, level: number, time: nu
   if (glow > 0.02) {
     ctx.globalCompositeOperation = "screen";
     const flick = 0.9 + Math.sin(time * 2.6) * 0.1;
-    for (const lamp of [
-      { x: 816, y: 176, r: 280 },
-      { x: 486, y: 486, r: 190 },
-    ]) {
+    for (const lamp of [{ x: 1137, y: 555, r: 220 }]) {
       const g = ctx.createRadialGradient(lamp.x, lamp.y, 8, lamp.x, lamp.y, lamp.r);
       g.addColorStop(0, `rgba(255, 214, 150, ${glow * flick})`);
       g.addColorStop(0.42, `rgba(255, 168, 84, ${glow * 0.3})`);

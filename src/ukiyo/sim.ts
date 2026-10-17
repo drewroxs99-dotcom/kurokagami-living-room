@@ -10,49 +10,50 @@ import type {
   World,
 } from "./types";
 
-/** Feet on the front lip of each painted cushion. */
+/** Foot positions for cushions placed on the foreground tatami. */
 export const SEATS: Seat[] = [
-  { id: "left", x: 516, y: 814 },
-  { id: "right", x: 1090, y: 814 },
-  { id: "center", x: 800, y: 846 },
-  { id: "alcove", x: 365, y: 748 },
-  { id: "front", x: 1246, y: 746 },
-  { id: "screen", x: 1468, y: 824 },
+  { id: "left", x: 670, y: 816 },
+  { id: "right", x: 920, y: 816 },
+  { id: "center", x: 800, y: 848 },
+  { id: "alcove", x: 420, y: 796 },
+  { id: "front", x: 1150, y: 810 },
+  { id: "screen", x: 1430, y: 842 },
 ];
 
-/** Measured from the vermilion weave on the hall print. */
+/** Visible cushions follow the painted floor plane from the table to the viewer. */
 export const CUSHIONS = [
-  { id: "sideLeft", x: 365, y: 728, rx: 52, ry: 20 },
-  { id: "frontLeft", x: 516, y: 792, rx: 78, ry: 24 },
-  { id: "frontRight", x: 1090, y: 792, rx: 74, ry: 24 },
-  { id: "sideRight", x: 1246, y: 726, rx: 36, ry: 16 },
+  { id: "alcove", x: 420, y: 777, rx: 44, ry: 17 },
+  { id: "left", x: 670, y: 795, rx: 58, ry: 21 },
+  { id: "center", x: 800, y: 827, rx: 73, ry: 26 },
+  { id: "right", x: 920, y: 795, rx: 58, ry: 21 },
+  { id: "front", x: 1150, y: 790, rx: 52, ry: 19 },
+  { id: "screen", x: 1430, y: 821, rx: 45, ry: 17 },
 ];
 
 /**
- * y is the lacquer contact: the foot of the pot or cup.
- * The black tabletops sit near y=700. y=760 is the tatami in front of the legs.
+ * Coordinates map directly to the painted low table in room.jpg.
  */
 export const TEA_TABLES = [
   {
     id: "left" as const,
-    pot: { x: 538, y: 708 },
+    pot: { x: 800, y: 676 },
     cups: [
-      { id: "l1", x: 466, y: 714 },
-      { id: "l2", x: 612, y: 712 },
+      { id: "l1", x: 650, y: 684 },
+      { id: "l2", x: 705, y: 684 },
     ],
-    sweet: { x: 574, y: 716 },
-    approach: { x: 292, y: 828, face: 1 as const },
+    sweet: { x: 758, y: 686 },
+    approach: { x: 710, y: 814, face: 1 as const },
     seat: "left",
   },
   {
     id: "right" as const,
-    pot: { x: 1082, y: 700 },
+    pot: { x: 800, y: 676 },
     cups: [
-      { id: "r1", x: 1000, y: 706 },
-      { id: "r2", x: 1168, y: 704 },
+      { id: "r1", x: 895, y: 684 },
+      { id: "r2", x: 950, y: 684 },
     ],
-    sweet: { x: 1132, y: 708 },
-    approach: { x: 1364, y: 828, face: -1 as const },
+    sweet: { x: 842, y: 686 },
+    approach: { x: 890, y: 814, face: -1 as const },
     seat: "right",
   },
 ];
@@ -69,7 +70,7 @@ export const LOOKS: { id: string; x: number; y: number; face: 1 | -1; label: str
   { id: "flowers", x: 756, y: 846, face: -1, label: "the flowers" },
 ];
 
-export const TABLE = TEA_TABLES[0].approach;
+export const TABLE = { x: 800, y: 700 };
 export const STAND = { x: 214, y: 736 };
 export const TRAY = PIPE_TRAY;
 export const WATCH = LOOKS[0];
@@ -78,11 +79,26 @@ export const BRAZIER = { x: 828, y: 636 };
 export const HEARTH = LOOKS[2];
 export const BOUNDS = { x0: 160, y0: 640, x1: 1500, y1: 858 };
 
-/** Lacquer tops. Feet stay on the tatami in front or beside, never on the top. */
-const SOLIDS = [
-  { x0: 390, y0: 648, x1: 710, y1: 804 },
-  { x0: 940, y0: 636, x1: 1224, y1: 802 },
-];
+/** The painted low table and legs in room.jpg; feet stay clear of its silhouette. */
+const SOLIDS = [{ x0: 608, y0: 640, x1: 990, y1: 780 }];
+
+const WALK_CLEARANCE = 2;
+const ROUTE_CLEARANCE = WALK_CLEARANCE + 1;
+const NAVIGATION_OBSTACLES = SOLIDS.map((solid) => ({
+  x0: solid.x0 - WALK_CLEARANCE,
+  y0: solid.y0 - WALK_CLEARANCE,
+  x1: solid.x1 + WALK_CLEARANCE,
+  y1: solid.y1 + WALK_CLEARANCE,
+}));
+const ROUTE_CORNERS = NAVIGATION_OBSTACLES.flatMap((solid) => [
+  { x: solid.x0 - ROUTE_CLEARANCE, y: solid.y0 - ROUTE_CLEARANCE },
+  { x: solid.x1 + ROUTE_CLEARANCE, y: solid.y0 - ROUTE_CLEARANCE },
+  { x: solid.x0 - ROUTE_CLEARANCE, y: solid.y1 + ROUTE_CLEARANCE },
+  { x: solid.x1 + ROUTE_CLEARANCE, y: solid.y1 + ROUTE_CLEARANCE },
+]).filter(
+  (point) =>
+    point.x >= BOUNDS.x0 && point.x <= BOUNDS.x1 && point.y >= BOUNDS.y0 && point.y <= BOUNDS.y1,
+);
 
 const LINES = [
   "The paper drinks the lamplight.",
@@ -175,7 +191,7 @@ export function createWorld(settings: Settings): World {
       { kind: "goto", x: left.approach.x, y: left.approach.y },
       { kind: "face", dir: left.approach.face },
       { kind: "pose", pose: "reach", seconds: 0.7 },
-      { kind: "takeCup" },
+      { kind: "takeCup", cupId: "l1" },
       { kind: "goto", x: SEATS[2].x, y: SEATS[2].y },
       { kind: "face", dir: -1 },
       { kind: "sit", seat: "center" },
@@ -317,6 +333,15 @@ function pushLog(world: World, text: string) {
   if (world.log.length > 16) world.log.pop();
 }
 
+function abortInteraction(world: World, ch: SimChar, settings: Settings, message: string) {
+  ch.queue = [{ kind: "wait", seconds: 1 }];
+  ch.taskTime = 0;
+  ch.raise = 0;
+  ch.pose = ch.sit > 0.5 ? "sit" : "stand";
+  releaseReserve(ch);
+  pushLog(world, `${nameOf(settings, ch.id)} ${message}`);
+}
+
 function finish(ch: SimChar) {
   ch.queue.shift();
   ch.taskTime = 0;
@@ -378,13 +403,7 @@ function stepPets(world: World, settings: Settings, dt: number) {
     pet.pose = "walk";
     pet.facing = dx >= 0 ? 1 : -1;
     const step = Math.min(d, speed * dt);
-    const nx = pet.x + (dx / d) * step;
-    const ny = pet.y + (dy / d) * step;
-    if (!blocked(nx, ny)) {
-      pet.x = nx;
-      pet.y = ny;
-    } else if (!blocked(nx, pet.y)) pet.x = nx;
-    else if (!blocked(pet.x, ny)) pet.y = ny;
+    stepAvoid(pet, pet.tx, pet.ty, step);
     pet.x = Math.min(BOUNDS.x1, Math.max(BOUNDS.x0, pet.x));
     pet.y = Math.min(BOUNDS.y1, Math.max(BOUNDS.y0, pet.y));
   }
@@ -407,47 +426,99 @@ function nearestOther(world: World, settings: Settings, ch: SimChar) {
 function clampWalk(ch: SimChar) {
   ch.x = Math.min(BOUNDS.x1, Math.max(BOUNDS.x0, ch.x));
   ch.y = Math.min(BOUNDS.y1, Math.max(BOUNDS.y0, ch.y));
-  pushOut(ch);
 }
 
 function blocked(x: number, y: number) {
-  return SOLIDS.some((s) => x > s.x0 && x < s.x1 && y > s.y0 && y < s.y1);
+  return NAVIGATION_OBSTACLES.some((s) => x > s.x0 && x < s.x1 && y > s.y0 && y < s.y1);
 }
 
-function pushOut(ch: { x: number; y: number }) {
-  for (const s of SOLIDS) {
-    if (ch.x <= s.x0 || ch.x >= s.x1 || ch.y <= s.y0 || ch.y >= s.y1) continue;
-    const left = ch.x - s.x0;
-    const right = s.x1 - ch.x;
-    const side = Math.min(left, right);
-    const front = s.y1 - ch.y;
-    if (side + 8 < front) ch.x = left < right ? s.x0 - 10 : s.x1 + 10;
-    else ch.y = s.y1 + 10;
+function segmentBlocked(x0: number, y0: number, x1: number, y1: number) {
+  return NAVIGATION_OBSTACLES.some((solid) => {
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    let enter = 0;
+    let leave = 1;
+
+    for (const [p, q] of [
+      [-dx, x0 - solid.x0],
+      [dx, solid.x1 - x0],
+      [-dy, y0 - solid.y0],
+      [dy, solid.y1 - y0],
+    ]) {
+      if (p === 0) {
+        if (q <= 0) return false;
+        continue;
+      }
+      const t = q / p;
+      if (p < 0) {
+        if (t > leave) return false;
+        enter = Math.max(enter, t);
+      } else {
+        if (t < enter) return false;
+        leave = Math.min(leave, t);
+      }
+    }
+
+    return enter < leave && leave > 0 && enter < 1;
+  });
+}
+
+function nextWaypoint(start: { x: number; y: number }, end: { x: number; y: number }) {
+  if (blocked(end.x, end.y)) return null;
+  if (!segmentBlocked(start.x, start.y, end.x, end.y)) return end;
+
+  const nodes = [start, ...ROUTE_CORNERS, end];
+  const distances = nodes.map(() => Infinity);
+  const previous = nodes.map(() => -1);
+  const visited = nodes.map(() => false);
+  const endIndex = nodes.length - 1;
+  distances[0] = 0;
+
+  for (let count = 0; count < nodes.length; count++) {
+    let current = -1;
+    for (let i = 0; i < nodes.length; i++) {
+      if (!visited[i] && (current === -1 || distances[i] < distances[current])) current = i;
+    }
+    if (current === -1 || !Number.isFinite(distances[current])) break;
+    if (current === endIndex) break;
+    visited[current] = true;
+
+    for (let i = 1; i < nodes.length; i++) {
+      if (
+        visited[i] ||
+        segmentBlocked(nodes[current].x, nodes[current].y, nodes[i].x, nodes[i].y)
+      ) {
+        continue;
+      }
+      const distance =
+        distances[current] + Math.hypot(nodes[i].x - nodes[current].x, nodes[i].y - nodes[current].y);
+      if (distance < distances[i]) {
+        distances[i] = distance;
+        previous[i] = current;
+      }
+    }
   }
+
+  if (!Number.isFinite(distances[endIndex])) return null;
+  let waypoint = endIndex;
+  while (previous[waypoint] > 0) waypoint = previous[waypoint];
+  return nodes[waypoint];
 }
 
 function stepAvoid(ch: { x: number; y: number }, tx: number, ty: number, step: number) {
-  const dx = tx - ch.x;
-  const dy = ty - ch.y;
-  const d = Math.hypot(dx, dy) || 1;
-  const nx = ch.x + (dx / d) * step;
-  const ny = ch.y + (dy / d) * step;
-  if (!blocked(nx, ny)) {
+  const waypoint = nextWaypoint(ch, { x: tx, y: ty });
+  if (!waypoint) return;
+  const dx = waypoint.x - ch.x;
+  const dy = waypoint.y - ch.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 0.001) return;
+  const distance = Math.min(d, step);
+  const nx = ch.x + (dx / d) * distance;
+  const ny = ch.y + (dy / d) * distance;
+  if (!segmentBlocked(ch.x, ch.y, nx, ny)) {
     ch.x = nx;
     ch.y = ny;
-    return;
   }
-  const side = ch.x + Math.sign(tx - ch.x || 1) * step;
-  if (!blocked(side, ch.y)) {
-    ch.x = side;
-    return;
-  }
-  const front = ch.y + Math.abs(step);
-  if (!blocked(ch.x, front)) {
-    ch.y = front;
-    return;
-  }
-  if (!blocked(nx, ch.y)) ch.x = nx;
 }
 
 function openPoint(world: World) {
@@ -549,7 +620,7 @@ function buildPlan(world: World, ch: SimChar, settings: Settings, plan: PlanName
         tasks.push({ kind: "goto", x: table.approach.x, y: table.approach.y });
         tasks.push({ kind: "face", dir: table.approach.face });
         tasks.push({ kind: "pose", pose: "reach", seconds: 0.65 });
-        tasks.push({ kind: "takeCup" });
+        if (cup) tasks.push({ kind: "takeCup", cupId: cup.id });
       }
       const seat =
         SEATS.find((s) => s.id === table.seat && !seatTaken(world, s.id, ch.id, settings)) ??
@@ -718,8 +789,19 @@ function avoidOthers(world: World, settings: Settings, ch: SimChar, dt: number) 
     const dy = ch.y - o.y;
     const d = Math.hypot(dx, dy * 1.4);
     if (d > 0.1 && d < 96) {
-      ch.x += (dx / d) * 70 * dt;
-      ch.y += (dy / d) * 42 * dt;
+      const x = ch.x + (dx / d) * 70 * dt;
+      const y = ch.y + (dy / d) * 42 * dt;
+      if (
+        x >= BOUNDS.x0 &&
+        x <= BOUNDS.x1 &&
+        y >= BOUNDS.y0 &&
+        y <= BOUNDS.y1 &&
+        !blocked(x, y) &&
+        !segmentBlocked(ch.x, ch.y, x, y)
+      ) {
+        ch.x = x;
+        ch.y = y;
+      }
     }
   }
 }
@@ -811,18 +893,20 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
   }
 
   if (task.kind === "takeCup") {
+    const cup = task.cupId
+      ? world.cups.find((candidate) => candidate.id === task.cupId)
+      : nearestFreeCup(world, ch);
+    if (!cup || cup.holder || dist(ch, cup) > 250) {
+      abortInteraction(world, ch, settings, "could not reach a free cup.");
+      return;
+    }
     if (ch.hold === "pipe") {
-      world.pipeHolder = null;
-      ch.hold = "none";
+      abortInteraction(world, ch, settings, "put the pipe away before taking a cup.");
+      return;
     }
-    const free = world.cups.filter((c) => c.holder === null);
-    free.sort((a, b) => Math.hypot(a.x - ch.x, a.y - ch.y) - Math.hypot(b.x - ch.x, b.y - ch.y));
-    const cup = free[0];
-    if (cup) {
-      cup.holder = ch.id;
-      ch.hold = "cup";
-      pushLog(world, `${nameOf(settings, ch.id)} lifted a cup.`);
-    }
+    cup.holder = ch.id;
+    ch.hold = "cup";
+    pushLog(world, `${nameOf(settings, ch.id)} lifted a cup.`);
     finish(ch);
     return;
   }
@@ -840,6 +924,10 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
   }
 
   if (task.kind === "drink") {
+    if (ch.hold !== "cup") {
+      abortInteraction(world, ch, settings, "could not drink without a cup.");
+      return;
+    }
     ch.pose = "drink";
     const e = ch.taskTime;
     if (e < 0.7) ch.raise = e / 0.7;
@@ -860,15 +948,21 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
   }
 
   if (task.kind === "takePipe") {
-    if (!world.pipeHolder || world.pipeHolder === ch.id) {
-      if (ch.hold === "cup") {
-        const cup = world.cups.find((c) => c.holder === ch.id);
-        if (cup) cup.holder = null;
-      }
-      world.pipeHolder = ch.id;
-      ch.hold = "pipe";
-      pushLog(world, `${nameOf(settings, ch.id)} took the kiseru.`);
+    if (world.pipeHolder && world.pipeHolder !== ch.id) {
+      abortInteraction(world, ch, settings, "could not take the pipe; someone else has it.");
+      return;
     }
+    if (dist(ch, PIPE_TRAY) > 110) {
+      abortInteraction(world, ch, settings, "could not reach the pipe tray.");
+      return;
+    }
+    if (ch.hold === "cup") {
+      const cup = world.cups.find((c) => c.holder === ch.id);
+      if (cup) cup.holder = null;
+    }
+    world.pipeHolder = ch.id;
+    ch.hold = "pipe";
+    pushLog(world, `${nameOf(settings, ch.id)} took the kiseru.`);
     finish(ch);
     return;
   }
@@ -882,6 +976,20 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
   }
 
   if (task.kind === "smoke") {
+    if (ch.hold !== "pipe") {
+      abortInteraction(world, ch, settings, "could not smoke without the pipe.");
+      return;
+    }
+    if (!settings.env.smoke) {
+      ch.queue = [
+        { kind: "stand" },
+        { kind: "goto", x: PIPE_TRAY.x - 46, y: PIPE_TRAY.y },
+        { kind: "face", dir: PIPE_TRAY.face },
+        { kind: "placePipe" },
+      ];
+      ch.taskTime = 0;
+      return;
+    }
     ch.pose = "smoke";
     ch.raise = 0.35 + Math.sin(ch.taskTime * 1.4) * 0.08;
     if (world.rng() < dt * 7) {

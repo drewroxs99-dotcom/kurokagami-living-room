@@ -3,10 +3,9 @@ import { patternTile } from "./patterns";
 import { figureScale, screenFootX } from "./figure";
 import { BRAZIER, CUSHIONS, PIPE_TRAY, TEA_TABLES } from "./sim";
 import { assetMatches, getActiveAssets, imageForAsset } from "./assets";
+import { plateDrawSign, type PlatePose } from "./plate-directions";
 import type { CharConfig, PatternId, Pet, Settings, SimChar, World } from "./types";
-
-const POSES = ["stand", "walk", "sit"] as const;
-type PlatePose = (typeof POSES)[number];
+import { WALL_ART } from "./wall-art";
 
 const CAST = ["komachi", "hanae", "ofuku", "arai", "ume", "kichi", "otsu", "jiro", "saku", "hei"] as const;
 
@@ -62,26 +61,8 @@ const CANON_PATTERN: Record<string, PatternId> = {
   hei: "solid",
 };
 
-/**
- * Direction the unflipped plate is looking.
- * Almost every print faces left. Jiro faces right.
- * Sit plates for Hanae, Ume, and Hei face the other way.
- * Draw scale is facing * native, so the nose points the way they walk.
- */
-const PLATE_FACE: Record<string, Record<PlatePose, 1 | -1>> = {
-  komachi: { stand: -1, walk: -1, sit: -1 },
-  hanae: { stand: -1, walk: -1, sit: 1 },
-  ofuku: { stand: -1, walk: -1, sit: -1 },
-  arai: { stand: -1, walk: -1, sit: -1 },
-  ume: { stand: -1, walk: -1, sit: 1 },
-  kichi: { stand: -1, walk: -1, sit: -1 },
-  otsu: { stand: -1, walk: -1, sit: -1 },
-  jiro: { stand: 1, walk: 1, sit: 1 },
-  saku: { stand: -1, walk: -1, sit: -1 },
-  hei: { stand: -1, walk: -1, sit: 1 },
-};
-
 const images = new Map<string, HTMLImageElement>();
+const tableForegroundLayers = new Map<string, HTMLCanvasElement>();
 
 function load(src: string): HTMLImageElement | null {
   if (typeof Image === "undefined") return null;
@@ -99,12 +80,50 @@ export function roomPlate(): HTMLImageElement | null {
   return load("/prints/room.jpg");
 }
 
-function platePose(ch: SimChar): PlatePose {
-  if (ch.sit > 0.45 || ch.pose === "sit") return "sit";
-  if (ch.pose === "walk" && ch.sit < 0.2) {
-    const step = Math.sin(ch.walkPhase * Math.PI * 2);
-    return Math.abs(step) > 0.35 ? "walk" : "stand";
+function drawTableForeground(ctx: CanvasRenderingContext2D, settings: Settings) {
+  const room = roomPlate();
+  if (!room) return;
+
+  const key = `${settings.env.lanternPaper}:${settings.env.screen}`;
+  let layer = tableForegroundLayers.get(key);
+  if (!layer) {
+    layer = document.createElement("canvas");
+    layer.width = 1600;
+    layer.height = 900;
+    const layerCtx = layer.getContext("2d");
+    if (!layerCtx) return;
+    layerCtx.beginPath();
+    layerCtx.moveTo(650, 647);
+    layerCtx.lineTo(949, 647);
+    layerCtx.lineTo(980, 676);
+    layerCtx.lineTo(982, 700);
+    layerCtx.lineTo(616, 700);
+    layerCtx.lineTo(616, 678);
+    layerCtx.closePath();
+    layerCtx.rect(624, 698, 350, 26);
+    layerCtx.moveTo(637, 706);
+    layerCtx.lineTo(664, 706);
+    layerCtx.lineTo(664, 769);
+    layerCtx.lineTo(651, 778);
+    layerCtx.lineTo(640, 773);
+    layerCtx.closePath();
+    layerCtx.moveTo(939, 706);
+    layerCtx.lineTo(963, 706);
+    layerCtx.lineTo(963, 773);
+    layerCtx.lineTo(951, 779);
+    layerCtx.lineTo(939, 772);
+    layerCtx.closePath();
+    layerCtx.clip();
+    layerCtx.drawImage(room, 0, 0, 1600, 900);
+    drawRoomTints(layerCtx, settings);
+    tableForegroundLayers.set(key, layer);
   }
+  ctx.drawImage(layer, 0, 0);
+}
+
+function platePose(ch: SimChar): PlatePose {
+  if (ch.pose === "walk" && ch.sit < 0.2) return "walk";
+  if (ch.sit > 0.5 || ch.pose === "sit") return "sit";
   return "stand";
 }
 
@@ -231,7 +250,7 @@ function dyePlate(
 
 type Ink = { lw: (px: number) => number };
 
-type Masks = { lantern: HTMLCanvasElement; cloth: HTMLCanvasElement; screen: HTMLCanvasElement };
+type Masks = { lantern: HTMLCanvasElement; screen: HTMLCanvasElement };
 let masks: Masks | null = null;
 const tintCache = new Map<string, HTMLCanvasElement>();
 
@@ -245,7 +264,7 @@ function paintMask(img: ImageData) {
   return c;
 }
 
-/** Paper, cushion weave, and byobu gold, sampled from the hall print. */
+/** Lantern paper and byobu gold, sampled from the room print. */
 function ensureMasks(room: HTMLImageElement): Masks | null {
   if (masks) return masks;
   const w = 1600;
@@ -258,29 +277,16 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
   sg.drawImage(room, 0, 0, w, h);
   const src = sg.getImageData(0, 0, w, h).data;
   const lantern = sg.createImageData(w, h);
-  const cloth = sg.createImageData(w, h);
   const screen = sg.createImageData(w, h);
-  const inCushion = (x: number, y: number) => {
-    for (const cush of CUSHIONS) {
-      const dx = (x - cush.x) / (cush.rx + 10);
-      const dy = (y - cush.y) / (cush.ry + 8);
-      if (dx * dx + dy * dy <= 1) return true;
-    }
-    return false;
-  };
   for (let y = 0, p = 0; y < h; y++) {
     for (let x = 0; x < w; x++, p++) {
       const i = p * 4;
       const r = src[i];
       const g0 = src[i + 1];
       const b = src[i + 2];
-      const hang = x > 748 && x < 912 && y > 122 && y < 234;
-      const floor = x > 440 && x < 530 && y > 426 && y < 534;
-      if ((hang || floor) && r > 158 && g0 > 108 && b > 48 && b < 205 && r - b > 38 && g0 - b > 12) {
+      const lantern = x > 1096 && x < 1178 && y > 476 && y < 658;
+      if (lantern && r > 158 && g0 > 108 && b > 48 && b < 205 && r - b > 38 && g0 - b > 12) {
         lantern.data[i] = lantern.data[i + 1] = lantern.data[i + 2] = lantern.data[i + 3] = 255;
-      }
-      if (inCushion(x, y) && r > 68 && r < 185 && g0 < 118 && b < 98 && r - g0 > 26 && r - b > 30) {
-        cloth.data[i] = cloth.data[i + 1] = cloth.data[i + 2] = cloth.data[i + 3] = 255;
       }
       if (
         x > 1252 &&
@@ -301,10 +307,9 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
     }
   }
   const lanternC = paintMask(lantern);
-  const clothC = paintMask(cloth);
   const screenC = paintMask(screen);
-  if (!lanternC || !clothC || !screenC) return null;
-  masks = { lantern: lanternC, cloth: clothC, screen: screenC };
+  if (!lanternC || !screenC) return null;
+  masks = { lantern: lanternC, screen: screenC };
   return masks;
 }
 
@@ -385,9 +390,17 @@ export function drawPlateCast(
   selected: string | null,
   ink: Ink,
 ) {
-  type Item = { y: number; draw: () => void };
+  type Item = { y: number; depth?: number; draw: () => void };
   const items: Item[] = [];
   items.push({ y: 120, draw: () => drawRoomTints(ctx, settings) });
+  items.push({ y: 560, draw: () => drawWallArt(ctx, settings) });
+  for (const cushion of CUSHIONS) {
+    items.push({
+      y: cushion.y,
+      draw: () => drawCushion(ctx, cushion.x, cushion.y, cushion.rx, cushion.ry, settings),
+    });
+  }
+  items.push({ y: 780, draw: () => drawTableForeground(ctx, settings) });
   items.push({
     y: BRAZIER.y,
     draw: () => {
@@ -395,13 +408,18 @@ export function drawPlateCast(
       wisps(ctx, BRAZIER.x, BRAZIER.y - 10, world.time, "rgba(70,60,50,0.55)");
     },
   });
+  const pot = TEA_TABLES[0]?.pot;
+  if (pot) {
+    items.push({
+      y: pot.y,
+      depth: 781,
+      draw: () => drawPot(ctx, pot.x, pot.y, settings, ink),
+    });
+  }
   for (const table of TEA_TABLES) {
     items.push({
-      y: table.pot.y,
-      draw: () => drawPot(ctx, table.pot.x, table.pot.y, settings, ink),
-    });
-    items.push({
       y: table.sweet.y,
+      depth: 781,
       draw: () => drawSweet(ctx, table.sweet.x, table.sweet.y, ink),
     });
     for (const cup of table.cups) {
@@ -409,6 +427,7 @@ export function drawPlateCast(
       if (held) continue;
       items.push({
         y: cup.y,
+        depth: 781,
         draw: () => drawCup(ctx, cup.x, cup.y - 6, 1.2, settings, ink),
       });
     }
@@ -430,7 +449,7 @@ export function drawPlateCast(
       items.push({ y: pet.y, draw: () => drawPet(ctx, pet, world) });
     }
   }
-  items.sort((a, b) => a.y - b.y);
+  items.sort((a, b) => (a.depth ?? a.y) - (b.depth ?? b.y));
   for (const item of items) item.draw();
 }
 
@@ -439,13 +458,6 @@ function drawRoomTints(ctx: CanvasRenderingContext2D, settings: Settings) {
   if (!room) return;
   const m = ensureMasks(room);
   if (!m) return;
-  if (settings.env.wood !== "persimmon") {
-    ctx.save();
-    ctx.globalAlpha = 0.38;
-    ctx.globalCompositeOperation = "multiply";
-    ctx.drawImage(coloredMask(m.cloth, pigmentHex(settings.env.wood), "cloth"), 0, 0);
-    ctx.restore();
-  }
   if (settings.env.lanternPaper !== "ochre") {
     ctx.save();
     ctx.globalAlpha = 0.42;
@@ -457,9 +469,66 @@ function drawRoomTints(ctx: CanvasRenderingContext2D, settings: Settings) {
     ctx.save();
     ctx.globalAlpha = 0.42;
     ctx.drawImage(patternOnMask(m.screen, settings.env.screen, "screen"), 0, 0);
-    ctx.drawImage(patternOnMask(m.cloth, settings.env.screen, "cushpat"), 0, 0);
     ctx.restore();
   }
+}
+
+function drawCushion(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, settings: Settings) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = pigmentHex(settings.env.wood);
+  ctx.strokeStyle = "rgba(37, 23, 18, 0.82)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const tile = patternTile(settings.env.cushionPattern);
+  if (tile && settings.env.cushionPattern !== "solid") {
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx - 2, ry - 2, 0, 0, Math.PI * 2);
+    ctx.clip();
+    const pattern = ctx.createPattern(tile, "repeat");
+    if (pattern) {
+      pattern.setTransform(new DOMMatrix().scale(1.2, 1.2));
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = pattern;
+      ctx.fillRect(-rx, -ry, rx * 2, ry * 2);
+    }
+    ctx.restore();
+  }
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx * 0.78, ry * 0.67, 0, 0.16, Math.PI * 0.84);
+  ctx.strokeStyle = "rgba(245, 220, 177, 0.3)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawWallArt(ctx: CanvasRenderingContext2D, settings: Settings) {
+  const art = WALL_ART.find((entry) => entry.id === settings.env.wallArt);
+  if (!art) return;
+  const image = load(art.src);
+  if (!image) return;
+  const x = 765;
+  const y = 329;
+  const w = 69;
+  const h = 220;
+  const scale = Math.min(w / image.naturalWidth, h / image.naturalHeight);
+  const drawW = image.naturalWidth * scale;
+  const drawH = image.naturalHeight * scale;
+  ctx.save();
+  ctx.fillStyle = "#d9c6a0";
+  ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  ctx.drawImage(image, x + (w - drawW) / 2, y + (h - drawH) / 2, drawW, drawH);
+  ctx.restore();
+  ctx.strokeStyle = "rgba(57, 39, 27, 0.8)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
 }
 
 function drawPot(ctx: CanvasRenderingContext2D, x: number, base: number, settings: Settings, ink: Ink) {
@@ -634,22 +703,18 @@ function drawOne(
   ink: Ink,
 ) {
   const pose = platePose(ch);
-  const img = load(srcFor(ch.id, pose)) ?? load(srcFor(ch.id, "stand"));
-  if (!img) return;
-
   const s = figureScale(ch.y) * config.stature;
   const x = screenFootX(ch.x, ch.y);
   const y = ch.y;
-  const tall = pose === "sit" ? 156 : 200;
-  const h = tall * s;
+  const img = load(srcFor(ch.id, pose)) ?? load(srcFor(ch.id, "stand"));
+  if (!img) return;
+  const seated = ch.sit * ch.sit * (3 - 2 * ch.sit);
+  const h = (200 - 44 * seated) * s;
   const w = h * (img.naturalWidth / img.naturalHeight);
   const idle = Math.sin(world.time * 0.9 + ch.x * 0.01);
   const walking = ch.pose === "walk" && ch.sit < 0.2;
   const bob = walking ? -Math.abs(Math.sin(ch.walkPhase * Math.PI * 2)) * 5 * s : idle * -2.2 * s;
   const breath = 1 + Math.sin(world.time * 1.35 + ch.y) * 0.012;
-  const native = PLATE_FACE[ch.id]?.[pose] ?? -1;
-  const drawSign = ch.facing * native;
-
   const kimono = CANON[ch.id] && config.pigment !== CANON[ch.id] ? pigmentHex(config.pigment) : null;
   const obi = CANON_OBI[ch.id] && config.obi !== CANON_OBI[ch.id] ? pigmentHex(config.obi) : null;
   const lining = CANON_LINING[ch.id] && config.lining !== CANON_LINING[ch.id] ? pigmentHex(config.lining) : null;
@@ -657,7 +722,6 @@ function drawOne(
     CANON_PATTERN[ch.id] && config.pattern !== CANON_PATTERN[ch.id] && config.pattern !== "solid"
       ? config.pattern
       : null;
-  const source = dyePlate(img, kimono, obi, lining, pattern);
 
   ctx.save();
   ctx.translate(x, y + bob);
@@ -666,7 +730,7 @@ function drawOne(
 
   ctx.fillStyle = "rgba(28,18,12,0.22)";
   ctx.beginPath();
-  ctx.ellipse(0, 4, (pose === "sit" ? 62 : 40) * s, 8 * s, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 4, (40 + 22 * seated) * s, 8 * s, 0, 0, Math.PI * 2);
   ctx.fill();
   if (selected) {
     ctx.strokeStyle = "#8e3a30";
@@ -676,25 +740,44 @@ function drawOne(
     ctx.stroke();
   }
 
-  ctx.save();
-  ctx.scale(drawSign, breath);
-  if (settings.env.misregister > 0.05) {
+  const drawPlate = (plate: PlatePose, alpha: number) => {
+    if (alpha <= 0) return;
+    const img = load(srcFor(ch.id, plate)) ?? load(srcFor(ch.id, "stand"));
+    if (!img) return;
+    const h = (plate === "sit" ? 156 : 200) * s;
+    const w = h * (img.naturalWidth / img.naturalHeight);
+    const source = dyePlate(img, kimono, obi, lining, pattern);
     ctx.save();
-    ctx.globalAlpha = 0.32 * settings.env.misregister;
-    ctx.drawImage(source, -w / 2 + 5, -h - 1, w, h);
+    ctx.globalAlpha *= alpha;
+    ctx.scale(plateDrawSign(ch.id, plate, ch.facing), breath);
+    if (settings.env.misregister > 0.05) {
+      ctx.save();
+      ctx.globalAlpha *= 0.32 * settings.env.misregister;
+      ctx.drawImage(source, -w / 2 + 5, -h - 1, w, h);
+      ctx.restore();
+    }
+    ctx.drawImage(source, -w / 2, -h, w, h);
     ctx.restore();
+  };
+
+  if (walking) {
+    drawPlate("walk", 1);
+  } else if (ch.sit > 0 && ch.sit < 1) {
+    drawPlate("stand", 1 - seated);
+    drawPlate("sit", seated);
+  } else {
+    drawPlate(pose, 1);
   }
-  ctx.drawImage(source, -w / 2, -h, w, h);
-  ctx.restore();
 
   if (ch.hold === "pipe" || ch.pose === "smoke") {
     const px = ch.facing * 18 * s;
-    const py = -h * (pose === "sit" ? 0.58 : 0.68);
+    const py = -h * (0.68 - 0.1 * seated);
     kiseru(ctx, px, py, s);
     wisps(ctx, px + ch.facing * 12 * s, py - 8 * s, world.time, "rgba(40,34,28,0.5)");
   } else if (ch.hold === "cup" || ch.pose === "drink") {
     const px = ch.facing * 16 * s;
-    const py = -h * (ch.pose === "drink" ? 0.52 + ch.raise * 0.12 : 0.5);
+    const cupHeight = ch.pose === "drink" ? 0.52 + ch.raise * 0.12 : 0.5;
+    const py = -h * cupHeight;
     drawCup(ctx, px, py, Math.max(0.7, s), settings, ink);
     wisps(ctx, px, py - 10 * s, world.time * 0.8, "rgba(90,80,70,0.4)");
   }

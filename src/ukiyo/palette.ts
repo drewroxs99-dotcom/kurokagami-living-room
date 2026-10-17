@@ -1,4 +1,5 @@
 import type { CharConfig, EnvSettings, PatternId, Settings, ThemeId, Traits } from "./types";
+import { WALL_ART } from "./wall-art";
 
 export type Pigment = { id: string; name: string; hex: string };
 
@@ -543,6 +544,8 @@ export function defaultEnv(): EnvSettings {
     petals: true,
     theme: "night",
     screen: "solid",
+    cushionPattern: "seigaiha",
+    wallArt: "",
     wood: "persimmon",
     glaze: "ai",
     lanternPaper: "ochre",
@@ -578,6 +581,11 @@ export function normalizeSettings(raw: unknown): Settings {
       petals: bool(e.petals, base.env.petals),
       theme: THEME_IDS.has(e.theme as ThemeId) ? (e.theme as ThemeId) : base.env.theme,
       screen: PATTERN_IDS.has(e.screen as PatternId) ? (e.screen as PatternId) : base.env.screen,
+      cushionPattern: PATTERN_IDS.has(e.cushionPattern as PatternId)
+        ? (e.cushionPattern as PatternId)
+        : base.env.cushionPattern,
+      wallArt:
+        typeof e.wallArt === "string" && WALL_ART.some((art) => art.id === e.wallArt) ? e.wallArt : "",
       wood: pigmentId(e.wood, base.env.wood),
       glaze: pigmentId(e.glaze, base.env.glaze),
       lanternPaper: pigmentId(e.lanternPaper, base.env.lanternPaper),
