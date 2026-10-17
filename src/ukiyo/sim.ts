@@ -564,7 +564,7 @@ function openPoint(world: World, settings: Settings, ch: SimChar) {
   for (let i = 0; i < 32; i++) {
     const x = BOUNDS.x0 + 30 + world.rng() * (BOUNDS.x1 - BOUNDS.x0 - 60);
     const y = BOUNDS.y0 + 16 + world.rng() * (BOUNDS.y1 - BOUNDS.y0 - 28);
-    if (blocked(x, y) || !nextWaypoint(ch, { x, y })) continue;
+    if (blocked(x, y)) continue;
     let nearest = Infinity;
     for (const other of world.chars) {
       if (other.id === ch.id || !here(settings, other.id)) continue;
