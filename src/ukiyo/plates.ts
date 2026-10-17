@@ -284,8 +284,8 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
       const r = src[i];
       const g0 = src[i + 1];
       const b = src[i + 2];
-      const lantern = x > 1096 && x < 1178 && y > 476 && y < 658;
-      if (lantern && r > 158 && g0 > 108 && b > 48 && b < 205 && r - b > 38 && g0 - b > 12) {
+      const isLantern = x > 1096 && x < 1178 && y > 476 && y < 658;
+      if (isLantern && r > 158 && g0 > 108 && b > 48 && b < 205 && r - b > 38 && g0 - b > 12) {
         lantern.data[i] = lantern.data[i + 1] = lantern.data[i + 2] = lantern.data[i + 3] = 255;
       }
       if (
