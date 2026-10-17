@@ -63,7 +63,7 @@ export const LOOKS: { id: string; x: number; y: number; face: 1 | -1; label: str
   { id: "pine", x: 200, y: 824, face: -1, label: "the pine" },
   { id: "scroll", x: 920, y: 824, face: -1, label: "the scroll" },
   { id: "hearth", x: 760, y: 780, face: 1, label: "the brazier" },
-  { id: "screen", x: 1290, y: 824, face: 1, label: "the screen" },
+  { id: "screen", x: 1260, y: 824, face: 1, label: "the screen" },
   { id: "lantern", x: 344, y: 668, face: 1, label: "the floor lantern" },
   { id: "flowers", x: 670, y: 820, face: 1, label: "the flowers" },
 ];
@@ -82,10 +82,11 @@ export const TABLE_BOUNDS = [
   { x0: 379, y0: 644, x1: 728, y1: 804 },
   { x0: 818, y0: 636, x1: 1234, y1: 802 },
 ];
+export const SCREEN_BOUNDS = { x0: 1124, y0: 640, x1: 1580, y1: 710 };
 
 const WALK_CLEARANCE = 2;
 const ROUTE_CLEARANCE = WALK_CLEARANCE + 1;
-const NAVIGATION_OBSTACLES = TABLE_BOUNDS.map((solid) => ({
+const NAVIGATION_OBSTACLES = [...TABLE_BOUNDS, SCREEN_BOUNDS].map((solid) => ({
   x0: solid.x0 - WALK_CLEARANCE,
   y0: solid.y0 - WALK_CLEARANCE,
   x1: solid.x1 + WALK_CLEARANCE,
@@ -856,7 +857,7 @@ function avoidOthers(
     let dx = ch.x - o.x;
     let dy = (ch.y - o.y) * 1.4;
     const d = Math.hypot(dx, dy);
-    const clearance = 82;
+    const clearance = 96;
     if (d < clearance) {
       const cross = (routeX * -dy - routeY * -dx) / routeLength;
       const side = Math.abs(cross) < 0.1 ? (ch.id < o.id ? 1 : -1) : cross > 0 ? -1 : 1;
@@ -898,8 +899,8 @@ function crowdDetour(
   const dy = task.y - ch.y;
   const length = Math.hypot(dx, dy);
   if (length < 0.001) return null;
-  const sideX = (-dy / length) * 88;
-  const sideY = (dx / length) * 88;
+  const sideX = (-dy / length) * 96;
+  const sideY = (dx / length) * 96;
   const candidates = [
     { x: ch.x + (dx / length) * 24 + sideX, y: ch.y + (dy / length) * 24 + sideY },
     { x: ch.x + (dx / length) * 24 - sideX, y: ch.y + (dy / length) * 24 - sideY },
