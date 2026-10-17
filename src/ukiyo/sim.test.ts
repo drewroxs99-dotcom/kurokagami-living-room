@@ -276,7 +276,7 @@ describe("household interactions", () => {
     });
 
     assert.ok(
-      minimumSeparation >= 42,
+      minimumSeparation >= 72,
       `the walker overlapped the seated person (${minimumSeparation.toFixed(1)}px clearance)`,
     );
     assert.ok(facingChanges <= 2, `the walker flipped direction ${facingChanges} times`);

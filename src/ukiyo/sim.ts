@@ -557,13 +557,26 @@ function stepAvoid(ch: { x: number; y: number }, tx: number, ty: number, step: n
   }
 }
 
-function openPoint(world: World) {
-  for (let i = 0; i < 12; i++) {
+function openPoint(world: World, settings: Settings, ch: SimChar) {
+  let best: { x: number; y: number } | null = null;
+  let bestScore = -Infinity;
+  for (let i = 0; i < 32; i++) {
     const x = BOUNDS.x0 + 30 + world.rng() * (BOUNDS.x1 - BOUNDS.x0 - 60);
     const y = BOUNDS.y0 + 16 + world.rng() * (BOUNDS.y1 - BOUNDS.y0 - 28);
-    if (!blocked(x, y)) return { x, y };
+    if (blocked(x, y) || !nextWaypoint(ch, { x, y })) continue;
+    let nearest = Infinity;
+    for (const other of world.chars) {
+      if (other.id === ch.id || !here(settings, other.id)) continue;
+      nearest = Math.min(nearest, Math.hypot(x - other.x, (y - other.y) * 1.4));
+    }
+    const distance = Math.hypot(x - ch.x, (y - ch.y) * 1.2);
+    const score = Math.min(nearest, 180) - distance * 0.12;
+    if (score > bestScore) {
+      best = { x, y };
+      bestScore = score;
+    }
   }
-  return { x: 800, y: 840 };
+  return best ?? { x: 800, y: 840 };
 }
 
 function seatFace(seat: Seat): 1 | -1 {
@@ -623,7 +636,7 @@ function buildPlan(world: World, ch: SimChar, settings: Settings, plan: PlanName
     tasks.push({ kind: "wait", seconds: (1.2 + world.rng() * 2.6) * waitMul });
   } else if (plan === "wander") {
     ensureStand(ch, tasks);
-    const spot = openPoint(world);
+    const spot = openPoint(world, settings, ch);
     tasks.push({ kind: "goto", x: spot.x, y: spot.y });
     tasks.push({ kind: "wait", seconds: 1 + world.rng() * 2.2 });
   } else if (plan === "sit") {
@@ -681,7 +694,7 @@ function buildPlan(world: World, ch: SimChar, settings: Settings, plan: PlanName
       tasks.push({ kind: "wait", seconds: 2 });
     } else {
       ensureStand(ch, tasks);
-      const side = ch.x <= other.x ? -78 : 78;
+      const side = ch.x <= other.x ? -124 : 124;
       const tx = Math.min(BOUNDS.x1, Math.max(BOUNDS.x0, other.x + side));
       const ty = Math.min(BOUNDS.y1, Math.max(BOUNDS.y0, other.y + 8));
       tasks.push({ kind: "goto", x: tx, y: ty });
@@ -742,7 +755,7 @@ function buildPlan(world: World, ch: SimChar, settings: Settings, plan: PlanName
     tasks.push({ kind: "pose", pose: "reach", seconds: 1.3 });
     const guest = world.chars.find((o) => o.id !== ch.id && (o.hold === "cup" || o.seat));
     if (guest) {
-      const tx = guest.x + (guest.x > ch.x ? -70 : 70);
+      const tx = guest.x + (guest.x > ch.x ? -112 : 112);
       tasks.push({ kind: "goto", x: Math.min(BOUNDS.x1, Math.max(BOUNDS.x0, tx)), y: guest.y + 6 });
       tasks.push({ kind: "face", dir: faceToward(tx, guest.x) });
       tasks.push({ kind: "pose", pose: "gesture", seconds: 2.2 });
@@ -834,17 +847,19 @@ function avoidOthers(
     let dx = ch.x - o.x;
     let dy = (ch.y - o.y) * 1.4;
     const d = Math.hypot(dx, dy);
-    const clearance = 70;
+    const clearance = 82;
     if (d < clearance) {
       const cross = (routeX * -dy - routeY * -dx) / routeLength;
       const side = Math.abs(cross) < 0.1 ? (ch.id < o.id ? 1 : -1) : cross > 0 ? -1 : 1;
-      const force = ((clearance - d) / clearance) * 96 * dt;
-      pushX += (-routeY / routeLength) * side * force;
-      pushY += (routeX / routeLength) * side * force;
+      const force = ((clearance - d) / clearance) * 132 * dt;
+      const awayX = d < 0.001 ? (ch.id < o.id ? 1 : -1) : dx / d;
+      const awayY = d < 0.001 ? 0 : dy / d;
+      pushX += awayX * force + (-routeY / routeLength) * side * force * 0.35;
+      pushY += awayY * force + (routeX / routeLength) * side * force * 0.35;
     }
   }
   const length = Math.hypot(pushX, pushY);
-  const maxPush = 96 * dt;
+  const maxPush = 132 * dt;
   if (length > maxPush) {
     pushX = (pushX / length) * maxPush;
     pushY = (pushY / length) * maxPush;
@@ -874,8 +889,8 @@ function crowdDetour(
   const dy = task.y - ch.y;
   const length = Math.hypot(dx, dy);
   if (length < 0.001) return null;
-  const sideX = (-dy / length) * 64;
-  const sideY = (dx / length) * 64;
+  const sideX = (-dy / length) * 88;
+  const sideY = (dx / length) * 88;
   const candidates = [
     { x: ch.x + (dx / length) * 24 + sideX, y: ch.y + (dy / length) * 24 + sideY },
     { x: ch.x + (dx / length) * 24 - sideX, y: ch.y + (dy / length) * 24 - sideY },
