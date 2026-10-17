@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Pause, Play, Trash2, Volume2, VolumeX, X } from "lucide-react";
+import { Pause, Play, Volume2, VolumeX, X } from "lucide-react";
 import { getWorld, injectPlan } from "@/ukiyo/live";
 import { activityLine } from "@/ukiyo/sim";
 import {
@@ -15,7 +15,6 @@ import { WALL_ART } from "@/ukiyo/wall-art";
 import { useHouse } from "@/ukiyo/store";
 import { sheet } from "@/ukiyo/draw";
 import type { DrinkStyle, PatternId } from "@/ukiyo/types";
-import { deleteAsset, listAssets, saveAsset, setActiveAssets, type AssetEvent, type CustomAsset } from "@/ukiyo/assets";
 
 export function Chrome() {
   const panel = useHouse((s) => s.panel);
@@ -128,9 +127,6 @@ function Panel() {
         </TabButton>
         <TabButton active={tab === "people"} onClick={() => setTab("people")}>
           Household
-        </TabButton>
-        <TabButton active={tab === "assets"} onClick={() => setTab("assets")}>
-          Artwork
         </TabButton>
       </div>
 
@@ -335,119 +331,10 @@ function Panel() {
           </div>
         ) : tab === "people" ? (
           <People />
-        ) : (
-          <ArtworkLibrary />
-        )}
+        ) : null}
       </div>
     </aside>
   );
-}
-
-const ASSET_EVENTS: { id: AssetEvent; label: string }[] = [
-  { id: "always", label: "Always" },
-  { id: "sit", label: "Sitting" },
-  { id: "walk", label: "Walking" },
-  { id: "drink", label: "Drinking" },
-  { id: "smoke", label: "Smoking" },
-  { id: "manual", label: "Manual" },
-];
-
-function ArtworkLibrary() {
-  const settings = useHouse((s) => s.settings);
-  const selected = useHouse((s) => s.selected);
-  const [assets, setAssets] = useState<CustomAsset[]>([]);
-  const [error, setError] = useState("");
-
-  const refresh = async () => {
-    try {
-      const next = await listAssets();
-      setAssets(next);
-      setActiveAssets(next);
-      setError("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not load the artwork library.");
-    }
-  };
-
-  useEffect(() => {
-    void refresh();
-  }, []);
-
-  const importFiles = async (files: FileList | null) => {
-    if (!files) return;
-    const supported = Array.from(files).filter((file) => ["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type));
-    if (supported.length !== files.length) setError("Only PNG, JPEG, WebP, and GIF images can be imported.");
-    try {
-      for (const file of supported) {
-        await saveAsset({
-          id: crypto.randomUUID(),
-          name: file.name.replace(/\.[^.]+$/, ""),
-          characterId: selected ?? "all",
-          event: "drink",
-          enabled: true,
-          image: file,
-        });
-      }
-      await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save this artwork.");
-    }
-  };
-
-  const updateAsset = async (asset: CustomAsset, patch: Partial<CustomAsset>) => {
-    const updated = { ...asset, ...patch };
-    try {
-      await saveAsset(updated);
-      await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not update this artwork.");
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <p className="font-display text-xl text-ink">Artwork library</p>
-        <p className="mt-1 text-sm text-ink-soft">Add transparent overlays and connect them to a character action. Original plates remain untouched.</p>
-      </div>
-      <label className="flex min-h-11 cursor-pointer items-center justify-center border border-vermilion bg-paper-2 px-3 text-sm text-ink">
-        Import images
-        <input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple onChange={(e) => { void importFiles(e.currentTarget.files); e.currentTarget.value = ""; }} />
-      </label>
-      {error ? <p role="alert" className="text-sm text-vermilion">{error}</p> : null}
-      {assets.length === 0 ? <p className="text-sm text-ink-soft">No added artwork yet. Imported images are saved in this browser.</p> : null}
-      {assets.map((asset) => (
-        <div key={asset.id} className="flex flex-col gap-2 border border-line p-3">
-          <div className="flex items-center gap-2">
-            <AssetPreview asset={asset} />
-            <input aria-label="Artwork name" className="min-h-10 min-w-0 flex-1 border border-line bg-paper-2 px-2 text-sm text-ink" value={asset.name} onChange={(e) => { void updateAsset(asset, { name: e.target.value }); }} />
-            <button type="button" aria-label={`Remove ${asset.name}`} className="flex size-10 shrink-0 items-center justify-center text-ink" onClick={async () => { await deleteAsset(asset.id); await refresh(); }}><Trash2 className="size-4" /></button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <select aria-label="Artwork character" className="min-h-10 border border-line bg-paper-2 px-2 text-sm text-ink" value={asset.characterId} onChange={(e) => { void updateAsset(asset, { characterId: e.target.value }); }}>
-              <option value="all">Every character</option>
-              {settings.chars.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <select aria-label="Artwork event" className="min-h-10 border border-line bg-paper-2 px-2 text-sm text-ink" value={asset.event} onChange={(e) => { void updateAsset(asset, { event: e.target.value as AssetEvent }); }}>
-              {ASSET_EVENTS.map((event) => <option key={event.id} value={event.id}>{event.label}</option>)}
-            </select>
-          </div>
-          <Toggle label={asset.enabled ? "Overlay enabled" : "Overlay hidden"} on={asset.enabled} onClick={() => { void updateAsset(asset, { enabled: !asset.enabled }); }} />
-          <p className="text-xs text-ink-soft">Shown as a centered, non-destructive overlay on the character.</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AssetPreview({ asset }: { asset: CustomAsset }) {
-  const [src, setSrc] = useState("");
-  useEffect(() => {
-    const url = URL.createObjectURL(asset.image);
-    setSrc(url);
-    return () => URL.revokeObjectURL(url);
-  }, [asset.id, asset.image]);
-  return <img src={src} alt="" className="size-12 shrink-0 object-contain bg-paper-2" />;
 }
 
 function People() {
@@ -470,6 +357,7 @@ function People() {
               "flex min-h-11 items-center gap-2 border px-2 text-left text-sm " +
               (c.id === person.id ? "border-vermilion bg-paper-2 text-ink" : "border-line text-ink-soft")
             }
+            aria-pressed={c.id === person.id}
           >
             <span className="inline-block size-3" style={{ backgroundColor: pigmentHex(c.pigment) }} />
             {c.name}
@@ -481,28 +369,33 @@ function People() {
         <p className="font-display text-xl text-ink">{person.name}</p>
         <p className="text-sm text-ink-soft">{roleLabel(person.role)}</p>
         <p className="mt-2 text-sm text-ink">{activityLine(world, settings, person.id)}</p>
+        <p className="mt-1 text-xs text-muted">{person.present ? "In the room" : "Away"}</p>
       </div>
 
-      <Swatches
-        label="Kimono pigment"
-        value={person.pigment}
-        onChange={(pigment) => useHouse.getState().patchChar(person.id, { pigment })}
-      />
-      <PatternSelect
-        label="Kimono pattern"
-        value={person.pattern}
-        onChange={(pattern) => useHouse.getState().patchChar(person.id, { pattern })}
-      />
-      <Swatches
-        label="Lining"
-        value={person.lining}
-        onChange={(lining) => useHouse.getState().patchChar(person.id, { lining })}
-      />
-      <Swatches
-        label="Obi"
-        value={person.obi}
-        onChange={(obi) => useHouse.getState().patchChar(person.id, { obi })}
-      />
+      <fieldset className="flex flex-col gap-4 border border-line p-3">
+        <legend className="px-1 font-display text-base text-ink">Clothing</legend>
+        <p className="text-xs text-muted">Color and pattern changes update the selected figure in the room.</p>
+        <Swatches
+          label="Kimono color"
+          value={person.pigment}
+          onChange={(pigment) => useHouse.getState().patchChar(person.id, { pigment })}
+        />
+        <PatternSelect
+          label="Kimono pattern"
+          value={person.pattern}
+          onChange={(pattern) => useHouse.getState().patchChar(person.id, { pattern })}
+        />
+        <Swatches
+          label="Lining color"
+          value={person.lining}
+          onChange={(lining) => useHouse.getState().patchChar(person.id, { lining })}
+        />
+        <Swatches
+          label="Obi color"
+          value={person.obi}
+          onChange={(obi) => useHouse.getState().patchChar(person.id, { obi })}
+        />
+      </fieldset>
 
       <div>
         <p className="mb-2 text-xs tracking-wide text-muted">Temperament</p>
@@ -679,17 +572,21 @@ function Swatches({
 }) {
   return (
     <fieldset>
-      <legend className="mb-2 text-xs tracking-wide text-muted">{label}</legend>
+      <legend className="mb-2 text-xs tracking-wide text-muted">
+        {label}
+        <span className="ml-2 text-ink">{PIGMENTS.find((p) => p.id === value)?.name ?? value}</span>
+      </legend>
       <div className="flex flex-wrap gap-2">
         {PIGMENTS.map((p) => (
           <button
             key={p.id}
             type="button"
             title={p.name}
-            aria-label={p.name}
+            aria-label={`${label}: ${p.name}`}
+            aria-pressed={value === p.id}
             onClick={() => onChange(p.id)}
             className={
-              "size-11 border " + (value === p.id ? "border-vermilion" : "border-line")
+              "size-11 border " + (value === p.id ? "border-vermilion ring-2 ring-vermilion/30" : "border-line")
             }
             style={{ backgroundColor: p.hex }}
           />

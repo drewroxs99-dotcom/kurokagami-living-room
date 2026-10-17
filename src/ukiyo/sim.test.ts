@@ -110,6 +110,16 @@ describe("household interactions", () => {
     assert.equal(world.cups.find((cup) => cup.id === "r1")?.holder, "arai");
   });
 
+  it("keeps Hanae facing forward while her first route is mostly vertical", () => {
+    const world = createWorld(defaultSettings());
+    const hanae = world.chars.find((character) => character.id === "hanae");
+    assert.ok(hanae);
+
+    advance(world, 0.5);
+
+    assert.equal(hanae.facing, 1);
+  });
+
   it("does not take a cup that another guest is holding or continue to drink", () => {
     const world = createWorld(defaultSettings());
     const ofuku = world.chars.find((character) => character.id === "ofuku");

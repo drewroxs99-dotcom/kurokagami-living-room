@@ -2,7 +2,6 @@ import { pigmentHex } from "./palette";
 import { patternTile } from "./patterns";
 import { figureScale, screenFootX } from "./figure";
 import { BRAZIER, CUSHIONS, PIPE_TRAY, TEA_TABLES } from "./sim";
-import { assetMatches, getActiveAssets, imageForAsset } from "./assets";
 import { plateDrawSign, type PlatePose } from "./plate-directions";
 import type { CharConfig, PatternId, Pet, Settings, SimChar, World } from "./types";
 import { WALL_ART } from "./wall-art";
@@ -156,16 +155,47 @@ function hexRgb(hex: string) {
   };
 }
 
-function dye(d: Uint8ClampedArray, i: number, hex: string) {
+type DyeTarget = { hue: number; saturation: number };
+
+function dyeTarget(hex: string): DyeTarget {
   const tgt = hexRgb(hex);
+  const max = Math.max(tgt.r, tgt.g, tgt.b) / 255;
+  const min = Math.min(tgt.r, tgt.g, tgt.b) / 255;
+  const chroma = max - min;
+  let hue = 0;
+  if (chroma > 0) {
+    if (max === tgt.r / 255) hue = ((tgt.g - tgt.b) / 255 / chroma) % 6;
+    else if (max === tgt.g / 255) hue = (tgt.b - tgt.r) / 255 / chroma + 2;
+    else hue = (tgt.r - tgt.g) / 255 / chroma + 4;
+    hue /= 6;
+    if (hue < 0) hue += 1;
+  }
+  const targetLightness = (max + min) / 2;
+  const denominator = 1 - Math.abs(2 * targetLightness - 1);
+  return { hue, saturation: denominator === 0 ? 0 : chroma / denominator };
+}
+
+function dye(d: Uint8ClampedArray, i: number, target: DyeTarget) {
+  const { hue, saturation } = target;
   const r = d[i];
-  const g0 = d[i + 1];
+  const g = d[i + 1];
   const b = d[i + 2];
-  const lum = (0.3 * r + 0.59 * g0 + 0.11 * b) / 255;
-  const shade = 0.32 + lum * 0.95;
-  d[i] = Math.min(255, tgt.r * shade);
-  d[i + 1] = Math.min(255, tgt.g * shade);
-  d[i + 2] = Math.min(255, tgt.b * shade);
+  const lightness = (0.3 * r + 0.59 * g + 0.11 * b) / 255;
+  const c = (1 - Math.abs(2 * lightness - 1)) * saturation;
+  const x = c * (1 - Math.abs(((hue * 6) % 2) - 1));
+  const m = lightness - c / 2;
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+  if (hue < 1 / 6) [red, green, blue] = [c, x, 0];
+  else if (hue < 2 / 6) [red, green, blue] = [x, c, 0];
+  else if (hue < 3 / 6) [red, green, blue] = [0, c, x];
+  else if (hue < 4 / 6) [red, green, blue] = [0, x, c];
+  else if (hue < 5 / 6) [red, green, blue] = [x, 0, c];
+  else [red, green, blue] = [c, 0, x];
+  d[i] = (red + m) * 255;
+  d[i + 1] = (green + m) * 255;
+  d[i + 2] = (blue + m) * 255;
 }
 
 function isSkin(r: number, g0: number, b: number) {
@@ -184,12 +214,14 @@ function garmentAt(x: number, y: number, w: number, h: number, r: number, g0: nu
   const sat = max === 0 ? 0 : (max - min) / max;
   if (l < 42) return -1;
   if (isSkin(r, g0, b)) return -1;
-  if (l > 188 && sat < 0.28 && r + 8 >= b) return -1;
   const ny = y / h;
   if (ny < 0.32) return -1;
   const nx = x / w;
   if (ny > 0.4 && ny < 0.54 && nx > 0.28 && nx < 0.72 && l < 150) return 1;
-  if (ny > 0.3 && ny < 0.5 && (nx < 0.2 || nx > 0.8)) return 2;
+  const lightTrim = l > 0.64 * 255 && sat < 0.38 && r + 12 >= b;
+  const sleeveEdge = ny > 0.3 && ny < 0.82 && (nx < 0.14 || nx > 0.86);
+  const collar = ny > 0.3 && ny < 0.43 && nx > 0.38 && nx < 0.62;
+  if (lightTrim && (sleeveEdge || collar)) return 2;
   return 0;
 }
 
@@ -215,14 +247,19 @@ function dyePlate(
   const mask = new Uint8Array(c.width * c.height);
   const w = c.width;
   const h = c.height;
+  const targets = {
+    kimono: kimono ? dyeTarget(kimono) : null,
+    obi: obi ? dyeTarget(obi) : null,
+    lining: lining ? dyeTarget(lining) : null,
+  };
   for (let y = 0, p = 0; y < h; y++) {
     for (let x = 0; x < w; x++, p++) {
       const i = p * 4;
       if (d[i + 3] < 16) continue;
       const part = garmentAt(x, y, w, h, d[i], d[i + 1], d[i + 2]);
       if (part < 0) continue;
-      const color = part === 1 ? obi : part === 2 ? lining : kimono;
-      if (color) dye(d, i, color);
+      const target = part === 1 ? targets.obi : part === 2 ? targets.lining : targets.kimono;
+      if (target) dye(d, i, target);
       if (part === 0) mask[p] = 1;
     }
   }
@@ -918,18 +955,6 @@ function drawOne(
     const py = -h * cupHeight;
     drawCup(ctx, px, py, Math.max(0.7, s), settings, ink);
     wisps(ctx, px, py - 10 * s, world.time * 0.8, "rgba(90,80,70,0.4)");
-  }
-
-  for (const asset of getActiveAssets()) {
-    if (!assetMatches(asset, ch.id, ch.pose)) continue;
-    const overlay = imageForAsset(asset);
-    if (!overlay.complete || !overlay.naturalWidth || !overlay.naturalHeight) continue;
-    const fit = Math.min(w / overlay.naturalWidth, h / overlay.naturalHeight);
-    const ow = overlay.naturalWidth * fit;
-    const oh = overlay.naturalHeight * fit;
-    ctx.globalAlpha = 0.9;
-    ctx.drawImage(overlay, -ow / 2, -h + (h - oh) / 2, ow, oh);
-    ctx.globalAlpha = 1;
   }
 
   ctx.restore();
