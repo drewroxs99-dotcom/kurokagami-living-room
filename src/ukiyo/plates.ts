@@ -292,28 +292,38 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
   const src = sg.getImageData(0, 0, w, h).data;
   const lantern = sg.createImageData(w, h);
   const screen = sg.createImageData(w, h);
+  const screenTop = new Float32Array(w);
+  const screenBottom = new Float32Array(w);
+  for (let x = 1124; x <= 1580; x++) {
+    screenTop[x] = x <= 1305
+      ? 266 + ((x - 1124) * (217 - 266)) / (1305 - 1124)
+      : 217 + ((x - 1305) * (168 - 217)) / (1568 - 1305);
+    screenBottom[x] = x <= 1390
+      ? 610 + ((x - 1126) * (645 - 610)) / (1390 - 1126)
+      : 645 + ((x - 1390) * (680 - 645)) / (1578 - 1390);
+  }
   for (let y = 0, p = 0; y < h; y++) {
     for (let x = 0; x < w; x++, p++) {
       const i = p * 4;
       const r = src[i];
       const g0 = src[i + 1];
       const b = src[i + 2];
-      const floorLantern = ((x - 486) / 36) ** 2 + ((y - 481) / 39) ** 2 <= 1;
-      const onLantern = (x > 748 && x < 912 && y > 122 && y < 234) || floorLantern;
-      if (onLantern && r > 158 && g0 > 108 && b > 48 && b < 205 && r - b > 38 && g0 - b > 12) {
+      const ceilingLantern = ((x - 830) / 83) ** 2 + ((y - 151) / 57) ** 2 <= 1;
+      const floorLantern = ((x - 486) / 37) ** 2 + ((y - 480) / 43) ** 2 <= 1;
+      const onLantern = ceilingLantern || floorLantern;
+      if (onLantern && r > 145 && g0 > 92 && b > 35 && b < 205 && r - b > 32 && g0 - b > 8) {
         lantern.data[i] = lantern.data[i + 1] = lantern.data[i + 2] = lantern.data[i + 3] = 255;
       }
-      const inFoldingScreen = x > 1252 && x < 1538 && y > 250 && y < 642;
+      const inFoldingScreen = x >= 1124 && x <= 1580 && y >= screenTop[x] && y <= screenBottom[x];
       if (
         inFoldingScreen &&
-        r > 88 &&
-        r < 205 &&
-        g0 > 52 &&
-        g0 < 168 &&
-        b < 92 &&
-        r - b > 46 &&
-        g0 - b > 16 &&
-        r + g0 + b > 190
+        r > 55 &&
+        r < 220 &&
+        g0 > 30 &&
+        g0 < 190 &&
+        b < 135 &&
+        r - b > 28 &&
+        r + g0 + b > 150
       ) {
         screen.data[i] = screen.data[i + 1] = screen.data[i + 2] = screen.data[i + 3] = 255;
       }
@@ -470,20 +480,20 @@ function drawRoomTints(ctx: CanvasRenderingContext2D, settings: Settings) {
   if (!m) return;
   if (settings.env.lanternPaper !== "ochre") {
     ctx.save();
-    ctx.globalAlpha = 0.42;
+    ctx.globalAlpha = 0.34;
     ctx.globalCompositeOperation = "multiply";
     ctx.drawImage(coloredMask(m.lantern, pigmentHex(settings.env.lanternPaper), "lamp"), 0, 0);
     ctx.restore();
   }
   if (settings.env.screen !== "solid") {
     ctx.save();
-    ctx.globalAlpha = 0.58;
+    ctx.globalAlpha = 0.24;
     ctx.drawImage(patternOnMask(m.screen, settings.env.screen, "screen"), 0, 0);
     ctx.restore();
   }
   if (settings.env.screenColor !== "ochre") {
     ctx.save();
-    ctx.globalAlpha = 0.68;
+    ctx.globalAlpha = 0.3;
     ctx.globalCompositeOperation = "multiply";
     ctx.drawImage(coloredMask(m.screen, pigmentHex(settings.env.screenColor), "screen"), 0, 0);
     ctx.restore();
@@ -504,7 +514,9 @@ function drawCushion(
   ctx.fillStyle = pigmentHex(settings.env.wood);
   ctx.beginPath();
   ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+  ctx.globalAlpha = 0.62;
   ctx.fill();
+  ctx.globalAlpha = 1;
   ctx.strokeStyle = "#1c140f";
   ctx.lineWidth = ink.lw(1.15);
   ctx.stroke();
@@ -517,13 +529,13 @@ function drawCushion(
     const pattern = ctx.createPattern(tile, "repeat");
     if (pattern) {
       pattern.setTransform(new DOMMatrix().scale(0.22, 0.22));
-      ctx.globalAlpha = 0.58;
+      ctx.globalAlpha = 0.28;
       ctx.fillStyle = pattern;
       ctx.fillRect(-rx, -ry, rx * 2, ry * 2);
     }
     ctx.restore();
   }
-  ctx.strokeStyle = "rgba(255, 244, 230, 0.35)";
+  ctx.strokeStyle = "rgba(255, 244, 230, 0.24)";
   ctx.lineWidth = ink.lw(0.8);
   ctx.beginPath();
   ctx.ellipse(0, 0, rx * (34 / 46), ry * (10 / 16), 0, 0, Math.PI * 2);
@@ -536,24 +548,22 @@ function drawWallArt(ctx: CanvasRenderingContext2D, settings: Settings) {
   if (!art) return;
   const image = load(art.src);
   if (!image) return;
-  const x = 765;
-  const y = 329;
-  const w = 69;
-  const h = 220;
+  const x = 758;
+  const y = 359;
+  const w = 68;
+  const h = 94;
   const scale = Math.min(w / image.naturalWidth, h / image.naturalHeight);
   const drawW = image.naturalWidth * scale;
   const drawH = image.naturalHeight * scale;
   ctx.save();
-  ctx.fillStyle = "#d9c6a0";
-  ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
   ctx.beginPath();
   ctx.rect(x, y, w, h);
   ctx.clip();
   ctx.drawImage(image, x + (w - drawW) / 2, y + (h - drawH) / 2, drawW, drawH);
   ctx.restore();
-  ctx.strokeStyle = "rgba(57, 39, 27, 0.8)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
+  ctx.strokeStyle = "rgba(57, 39, 27, 0.62)";
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(x, y, w, h);
 }
 
 function drawPot(ctx: CanvasRenderingContext2D, x: number, base: number, settings: Settings, ink: Ink) {

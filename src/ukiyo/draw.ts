@@ -1034,13 +1034,16 @@ function drawLanternLight(
       Number.parseInt(hex.slice(4, 6), 16),
     ].map((channel) => Math.round(channel + (255 - channel) * 0.58));
     const rgba = (alpha: number) => `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${alpha})`;
-    for (const lamp of [{ x: 486, y: 480, r: 250 }]) {
+    for (const lamp of [
+      { x: 830, y: 151, r: 210, strength: 0.72 },
+      { x: 486, y: 480, r: 165, strength: 0.88 },
+    ]) {
       const g = ctx.createRadialGradient(lamp.x, lamp.y, 8, lamp.x, lamp.y, lamp.r);
-      g.addColorStop(0, rgba(glow * flick));
-      g.addColorStop(0.42, rgba(glow * 0.3));
+      g.addColorStop(0, rgba(glow * flick * lamp.strength));
+      g.addColorStop(0.42, rgba(glow * 0.3 * lamp.strength));
       g.addColorStop(1, rgba(0));
       ctx.fillStyle = g;
-      ctx.fillRect(0, 0, 1600, 900);
+      ctx.fillRect(lamp.x - lamp.r, lamp.y - lamp.r, lamp.r * 2, lamp.r * 2);
     }
   }
   ctx.restore();
