@@ -11,6 +11,7 @@ import {
   pigmentHex,
   roleLabel,
 } from "@/ukiyo/palette";
+import { WALL_ART } from "@/ukiyo/wall-art";
 import { useHouse } from "@/ukiyo/store";
 import { sheet } from "@/ukiyo/draw";
 import type { DrinkStyle, PatternId } from "@/ukiyo/types";
@@ -243,7 +244,7 @@ function Panel() {
             />
 
             <label className="flex flex-col gap-2">
-              <span className="text-xs tracking-wide text-muted">Screen and cushion pattern</span>
+              <span className="text-xs tracking-wide text-muted">Screen pattern</span>
               <select
                 className="min-h-11 border border-line bg-paper-2 px-2 text-sm text-ink"
                 value={settings.env.screen}
@@ -256,6 +257,42 @@ function Panel() {
                 ))}
               </select>
             </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-xs tracking-wide text-muted">Cushion pattern</span>
+              <select
+                className="min-h-11 border border-line bg-paper-2 px-2 text-sm text-ink"
+                value={settings.env.cushionPattern}
+                onChange={(e) => setEnv({ cushionPattern: e.target.value as PatternId })}
+              >
+                {PATTERNS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-xs tracking-wide text-muted">Hanging scroll artwork</span>
+              <select
+                className="min-h-11 border border-line bg-paper-2 px-2 text-sm text-ink"
+                value={settings.env.wallArt}
+                onChange={(e) => setEnv({ wallArt: e.target.value })}
+              >
+                <option value="">Original scroll</option>
+                {WALL_ART.map((art) => (
+                  <option key={art.id} value={art.id}>
+                    {art.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {settings.env.wallArt && (
+              <img
+                src={WALL_ART.find((art) => art.id === settings.env.wallArt)?.src}
+                alt="Selected hanging scroll artwork"
+                className="h-40 w-full border border-line bg-paper-2 object-contain"
+              />
+            )}
 
             <Toggle
               label="Kiseru smoke"

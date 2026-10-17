@@ -10,22 +10,24 @@ import type {
   World,
 } from "./types";
 
-/** Feet on the front lip of each painted cushion. */
+/** Foot positions for cushions placed on the foreground tatami. */
 export const SEATS: Seat[] = [
-  { id: "left", x: 516, y: 814 },
-  { id: "right", x: 1090, y: 814 },
-  { id: "center", x: 800, y: 846 },
-  { id: "alcove", x: 365, y: 748 },
-  { id: "front", x: 1246, y: 746 },
-  { id: "screen", x: 1468, y: 824 },
+  { id: "left", x: 670, y: 816 },
+  { id: "right", x: 920, y: 816 },
+  { id: "center", x: 800, y: 848 },
+  { id: "alcove", x: 420, y: 796 },
+  { id: "front", x: 1150, y: 810 },
+  { id: "screen", x: 1430, y: 842 },
 ];
 
-/** Measured from the vermilion weave on the hall print. */
+/** Visible cushions follow the painted floor plane from the table to the viewer. */
 export const CUSHIONS = [
-  { id: "sideLeft", x: 365, y: 728, rx: 52, ry: 20 },
-  { id: "frontLeft", x: 516, y: 792, rx: 78, ry: 24 },
-  { id: "frontRight", x: 1090, y: 792, rx: 74, ry: 24 },
-  { id: "sideRight", x: 1246, y: 726, rx: 36, ry: 16 },
+  { id: "alcove", x: 420, y: 777, rx: 44, ry: 17 },
+  { id: "left", x: 670, y: 795, rx: 58, ry: 21 },
+  { id: "center", x: 800, y: 827, rx: 73, ry: 26 },
+  { id: "right", x: 920, y: 795, rx: 58, ry: 21 },
+  { id: "front", x: 1150, y: 790, rx: 52, ry: 19 },
+  { id: "screen", x: 1430, y: 821, rx: 45, ry: 17 },
 ];
 
 /**

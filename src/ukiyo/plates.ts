@@ -5,6 +5,7 @@ import { BRAZIER, CUSHIONS, PIPE_TRAY, TEA_TABLES } from "./sim";
 import { assetMatches, getActiveAssets, imageForAsset } from "./assets";
 import { plateDrawSign, type PlatePose } from "./plate-directions";
 import type { CharConfig, PatternId, Pet, Settings, SimChar, World } from "./types";
+import { WALL_ART } from "./wall-art";
 
 const CAST = ["komachi", "hanae", "ofuku", "arai", "ume", "kichi", "otsu", "jiro", "saku", "hei"] as const;
 
@@ -83,7 +84,7 @@ function drawTableForeground(ctx: CanvasRenderingContext2D, settings: Settings) 
   const room = roomPlate();
   if (!room) return;
 
-  const key = `${settings.env.wood}:${settings.env.lanternPaper}:${settings.env.screen}`;
+  const key = `${settings.env.lanternPaper}:${settings.env.screen}`;
   let layer = tableForegroundLayers.get(key);
   if (!layer) {
     layer = document.createElement("canvas");
@@ -249,7 +250,7 @@ function dyePlate(
 
 type Ink = { lw: (px: number) => number };
 
-type Masks = { lantern: HTMLCanvasElement; cloth: HTMLCanvasElement; screen: HTMLCanvasElement };
+type Masks = { lantern: HTMLCanvasElement; screen: HTMLCanvasElement };
 let masks: Masks | null = null;
 const tintCache = new Map<string, HTMLCanvasElement>();
 
@@ -263,7 +264,7 @@ function paintMask(img: ImageData) {
   return c;
 }
 
-/** Paper, cushion weave, and byobu gold, sampled from the hall print. */
+/** Lantern paper and byobu gold, sampled from the room print. */
 function ensureMasks(room: HTMLImageElement): Masks | null {
   if (masks) return masks;
   const w = 1600;
@@ -276,29 +277,16 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
   sg.drawImage(room, 0, 0, w, h);
   const src = sg.getImageData(0, 0, w, h).data;
   const lantern = sg.createImageData(w, h);
-  const cloth = sg.createImageData(w, h);
   const screen = sg.createImageData(w, h);
-  const inCushion = (x: number, y: number) => {
-    for (const cush of CUSHIONS) {
-      const dx = (x - cush.x) / (cush.rx + 10);
-      const dy = (y - cush.y) / (cush.ry + 8);
-      if (dx * dx + dy * dy <= 1) return true;
-    }
-    return false;
-  };
   for (let y = 0, p = 0; y < h; y++) {
     for (let x = 0; x < w; x++, p++) {
       const i = p * 4;
       const r = src[i];
       const g0 = src[i + 1];
       const b = src[i + 2];
-      const hang = x > 748 && x < 912 && y > 122 && y < 234;
-      const floor = x > 440 && x < 530 && y > 426 && y < 534;
-      if ((hang || floor) && r > 158 && g0 > 108 && b > 48 && b < 205 && r - b > 38 && g0 - b > 12) {
+      const lantern = x > 1096 && x < 1178 && y > 476 && y < 658;
+      if (lantern && r > 158 && g0 > 108 && b > 48 && b < 205 && r - b > 38 && g0 - b > 12) {
         lantern.data[i] = lantern.data[i + 1] = lantern.data[i + 2] = lantern.data[i + 3] = 255;
-      }
-      if (inCushion(x, y) && r > 68 && r < 185 && g0 < 118 && b < 98 && r - g0 > 26 && r - b > 30) {
-        cloth.data[i] = cloth.data[i + 1] = cloth.data[i + 2] = cloth.data[i + 3] = 255;
       }
       if (
         x > 1252 &&
@@ -319,10 +307,9 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
     }
   }
   const lanternC = paintMask(lantern);
-  const clothC = paintMask(cloth);
   const screenC = paintMask(screen);
-  if (!lanternC || !clothC || !screenC) return null;
-  masks = { lantern: lanternC, cloth: clothC, screen: screenC };
+  if (!lanternC || !screenC) return null;
+  masks = { lantern: lanternC, screen: screenC };
   return masks;
 }
 
@@ -406,6 +393,13 @@ export function drawPlateCast(
   type Item = { y: number; depth?: number; draw: () => void };
   const items: Item[] = [];
   items.push({ y: 120, draw: () => drawRoomTints(ctx, settings) });
+  items.push({ y: 560, draw: () => drawWallArt(ctx, settings) });
+  for (const cushion of CUSHIONS) {
+    items.push({
+      y: cushion.y,
+      draw: () => drawCushion(ctx, cushion.x, cushion.y, cushion.rx, cushion.ry, settings),
+    });
+  }
   items.push({ y: 780, draw: () => drawTableForeground(ctx, settings) });
   items.push({
     y: BRAZIER.y,
@@ -464,13 +458,6 @@ function drawRoomTints(ctx: CanvasRenderingContext2D, settings: Settings) {
   if (!room) return;
   const m = ensureMasks(room);
   if (!m) return;
-  if (settings.env.wood !== "persimmon") {
-    ctx.save();
-    ctx.globalAlpha = 0.38;
-    ctx.globalCompositeOperation = "multiply";
-    ctx.drawImage(coloredMask(m.cloth, pigmentHex(settings.env.wood), "cloth"), 0, 0);
-    ctx.restore();
-  }
   if (settings.env.lanternPaper !== "ochre") {
     ctx.save();
     ctx.globalAlpha = 0.42;
@@ -482,9 +469,66 @@ function drawRoomTints(ctx: CanvasRenderingContext2D, settings: Settings) {
     ctx.save();
     ctx.globalAlpha = 0.42;
     ctx.drawImage(patternOnMask(m.screen, settings.env.screen, "screen"), 0, 0);
-    ctx.drawImage(patternOnMask(m.cloth, settings.env.screen, "cushpat"), 0, 0);
     ctx.restore();
   }
+}
+
+function drawCushion(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, settings: Settings) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = pigmentHex(settings.env.wood);
+  ctx.strokeStyle = "rgba(37, 23, 18, 0.82)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const tile = patternTile(settings.env.cushionPattern);
+  if (tile && settings.env.cushionPattern !== "solid") {
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx - 2, ry - 2, 0, 0, Math.PI * 2);
+    ctx.clip();
+    const pattern = ctx.createPattern(tile, "repeat");
+    if (pattern) {
+      pattern.setTransform(new DOMMatrix().scale(1.2, 1.2));
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = pattern;
+      ctx.fillRect(-rx, -ry, rx * 2, ry * 2);
+    }
+    ctx.restore();
+  }
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx * 0.78, ry * 0.67, 0, 0.16, Math.PI * 0.84);
+  ctx.strokeStyle = "rgba(245, 220, 177, 0.3)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawWallArt(ctx: CanvasRenderingContext2D, settings: Settings) {
+  const art = WALL_ART.find((entry) => entry.id === settings.env.wallArt);
+  if (!art) return;
+  const image = load(art.src);
+  if (!image) return;
+  const x = 765;
+  const y = 329;
+  const w = 69;
+  const h = 220;
+  const scale = Math.min(w / image.naturalWidth, h / image.naturalHeight);
+  const drawW = image.naturalWidth * scale;
+  const drawH = image.naturalHeight * scale;
+  ctx.save();
+  ctx.fillStyle = "#d9c6a0";
+  ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  ctx.drawImage(image, x + (w - drawW) / 2, y + (h - drawH) / 2, drawW, drawH);
+  ctx.restore();
+  ctx.strokeStyle = "rgba(57, 39, 27, 0.8)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
 }
 
 function drawPot(ctx: CanvasRenderingContext2D, x: number, base: number, settings: Settings, ink: Ink) {

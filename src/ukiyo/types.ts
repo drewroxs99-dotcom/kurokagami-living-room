@@ -67,6 +67,8 @@ export type EnvSettings = {
   petals: boolean;
   theme: ThemeId;
   screen: PatternId;
+  cushionPattern: PatternId;
+  wallArt: string;
   wood: string;
   glaze: string;
   lanternPaper: string;
