@@ -828,9 +828,7 @@ export function characterHitBounds(
   const width = Math.max(...bounds.map((bound) => bound.width));
   const height = Math.max(...bounds.map((bound) => bound.height));
   const idle = Math.sin(world.time * 0.9 + ch.x * 0.01);
-  const bob = walking
-    ? -Math.abs(Math.sin(ch.walkPhase * Math.PI * 2)) * 5 * s
-    : idle * -2.2 * s;
+  const bob = 0;
   const breath = 1 + Math.sin(world.time * 1.35 + ch.y) * 0.012;
   const stride = walking ? Math.sin(ch.walkPhase * Math.PI * 2) : idle * 0.15;
   const angle = Math.abs(stride * 0.045);
@@ -855,7 +853,7 @@ function drawPet(ctx: CanvasRenderingContext2D, pet: Pet, world: World) {
   const x = screenFootX(pet.x, pet.y);
   const h = (pet.kind === "cat" ? 58 : 86) * s * (pose === "sit" ? 0.92 : 1);
   const w = h * (img.naturalWidth / img.naturalHeight);
-  const bob = pet.pose === "walk" ? -Math.abs(Math.sin(pet.phase * 8)) * 3.2 * s : Math.sin(world.time * 1.4 + pet.x) * -1.2 * s;
+  const bob = 0;
   const native = pet.kind === "cat" ? 1 : -1;
   ctx.save();
   ctx.translate(x, pet.y + bob);
@@ -888,7 +886,7 @@ function drawOne(
   const w = h * (img.naturalWidth / img.naturalHeight);
   const idle = Math.sin(world.time * 0.9 + ch.x * 0.01);
   const walking = ch.pose === "walk" && ch.sit < 0.2;
-  const bob = walking ? -Math.abs(Math.sin(ch.walkPhase * Math.PI * 2)) * 5 * s : idle * -2.2 * s;
+  const bob = 0;
   const breath = 1 + Math.sin(world.time * 1.35 + ch.y) * 0.012;
   const kimono = CANON[ch.id] && config.pigment !== CANON[ch.id] ? pigmentHex(config.pigment) : null;
   const obi = CANON_OBI[ch.id] && config.obi !== CANON_OBI[ch.id] ? pigmentHex(config.obi) : null;
@@ -901,7 +899,7 @@ function drawOne(
   ctx.save();
   ctx.translate(x, y + bob);
   const stride = walking ? Math.sin(ch.walkPhase * Math.PI * 2) : idle * 0.15;
-  ctx.rotate(ch.facing * stride * 0.045);
+  ctx.rotate(ch.facing * stride * 0.012);
 
   ctx.fillStyle = "rgba(28,18,12,0.22)";
   ctx.beginPath();

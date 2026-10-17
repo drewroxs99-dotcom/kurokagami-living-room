@@ -40,7 +40,7 @@ export const TEA_TABLES = [
       { id: "l2", x: 612, y: 712 },
     ],
     sweet: { x: 574, y: 716 },
-    approach: { x: 292, y: 828, face: 1 as const },
+    approach: { x: 450, y: 846, face: 1 as const },
     seat: "left",
   },
   {
@@ -60,33 +60,27 @@ export const TEA_TABLES = [
 export const PIPE_TRAY = { x: 1388, y: 816, face: -1 as const };
 
 export const LOOKS: { id: string; x: number; y: number; face: 1 | -1; label: string }[] = [
-  { id: "pine", x: 200, y: 824, face: -1, label: "the pine" },
+  { id: "pine", x: 380, y: 848, face: -1, label: "the pine" },
   { id: "scroll", x: 920, y: 824, face: -1, label: "the scroll" },
   { id: "hearth", x: 760, y: 780, face: 1, label: "the brazier" },
   { id: "screen", x: 1260, y: 824, face: 1, label: "the screen" },
-  { id: "lantern", x: 344, y: 668, face: 1, label: "the floor lantern" },
+  { id: "lantern", x: 360, y: 780, face: 1, label: "the floor lantern" },
   { id: "flowers", x: 670, y: 820, face: 1, label: "the flowers" },
 ];
 
 export const TABLE = { x: 800, y: 700 };
-export const STAND = { x: 214, y: 736 };
+export const STAND = { x: 400, y: 820 };
 export const TRAY = PIPE_TRAY;
 export const WATCH = LOOKS[0];
 export const SCROLL = LOOKS[1];
 export const BRAZIER = { x: 828, y: 636 };
 export const HEARTH = LOOKS[2];
-export const BOUNDS = { x0: 160, y0: 640, x1: 1500, y1: 858 };
+export const BOUNDS = { x0: 300, y0: 640, x1: 1500, y1: 858 };
 
-/** Solid tabletop, apron, and leg sections; open floor between table legs stays walkable. */
+/** Tatami only. The whole table, including the mats painted between the legs, is closed so nobody stands in the lacquer. */
 export const TABLE_BOUNDS = [
-  { x0: 379, y0: 644, x1: 728, y1: 712 },
-  { x0: 397, y0: 708, x1: 684, y1: 722 },
-  { x0: 397, y0: 716, x1: 439, y1: 786 },
-  { x0: 645, y0: 716, x1: 684, y1: 786 },
-  { x0: 818, y0: 636, x1: 1234, y1: 712 },
-  { x0: 834, y0: 708, x1: 1198, y1: 722 },
-  { x0: 834, y0: 716, x1: 880, y1: 786 },
-  { x0: 1150, y0: 716, x1: 1198, y1: 786 },
+  { x0: 379, y0: 644, x1: 728, y1: 804 },
+  { x0: 818, y0: 636, x1: 1234, y1: 802 },
 ];
 export const SCREEN_BOUNDS = { x0: 1124, y0: 640, x1: 1580, y1: 710 };
 
@@ -183,7 +177,7 @@ export function createWorld(settings: Settings): World {
     reserved: "left",
     queue: [{ kind: "wait", seconds: 2.4 }],
   });
-  const hanae = makeChar("hanae", 800, 646, 1, {
+  const hanae = makeChar("hanae", 760, 848, 1, {
     hold: "fan",
     pose: "walk",
     walkPhase: 0.35,
@@ -193,7 +187,7 @@ export function createWorld(settings: Settings): World {
       { kind: "pose", pose: "gesture", seconds: 2.8 },
     ],
   });
-  const ofuku = makeChar("ofuku", 220, 800, 1, {
+  const ofuku = makeChar("ofuku", 430, 840, 1, {
     pose: "walk",
     walkPhase: 0.1,
     reserved: "center",
@@ -222,7 +216,7 @@ export function createWorld(settings: Settings): World {
       { kind: "wait", seconds: 1.8 },
     ],
   });
-  const kichi = makeChar("kichi", 220, 660, 1, {
+  const kichi = makeChar("kichi", 360, 780, 1, {
     pose: "walk",
     walkPhase: 0.55,
     queue: [
@@ -287,7 +281,7 @@ export function createWorld(settings: Settings): World {
     chars: [komachi, hanae, ofuku, arai, ume, kichi, otsu, jiro, saku, hei],
     pets: [
       makePet("mikan", "cat", 700, 850, 1),
-      makePet("shiro", "dog", 210, 846, -1),
+      makePet("shiro", "dog", 560, 852, -1),
     ],
     cups: TEA_TABLES.flatMap((table) =>
       table.cups.map((cup) => ({

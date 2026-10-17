@@ -107,12 +107,17 @@ describe("household interactions", () => {
     assert.equal(isWalkablePosition(1468, 824), true);
   });
 
-  it("keeps open floor under the tables walkable while blocking tabletops and legs", () => {
+  it("keeps the wooden porch and the floor under the tables out of the walk", () => {
+    assert.equal(isWalkablePosition(200, 824), false);
+    assert.equal(isWalkablePosition(220, 800), false);
+    assert.equal(isWalkablePosition(210, 846), false);
     assert.equal(isWalkablePosition(550, 680), false);
     assert.equal(isWalkablePosition(420, 750), false);
-    assert.equal(isWalkablePosition(550, 750), true);
-    assert.equal(isWalkablePosition(1000, 750), true);
-    assert.equal(isWalkablePosition(350, 750), true);
+    assert.equal(isWalkablePosition(550, 750), false);
+    assert.equal(isWalkablePosition(1000, 750), false);
+    assert.equal(isWalkablePosition(380, 848), true);
+    assert.equal(isWalkablePosition(450, 846), true);
+    assert.equal(isWalkablePosition(760, 848), true);
   });
 
   it("picks up the cup at the table it approached", () => {
@@ -207,7 +212,7 @@ describe("household interactions", () => {
     });
 
     for (const character of world.chars) {
-      assert.ok(character.x >= 160 && character.x <= 1500, `${character.id} left the room`);
+      assert.ok(character.x >= 300 && character.x <= 1500, `${character.id} left the room`);
       assert.ok(character.y >= 640 && character.y <= 858, `${character.id} left the mats`);
       assert.equal(isWalkablePosition(character.x, character.y), true, `${character.id} entered a blocked area`);
     }
@@ -269,8 +274,8 @@ describe("household interactions", () => {
 
   it("routes people around the tea tables instead of walking across or getting stuck", () => {
     const crossings = [
-      { id: "ofuku", startX: 300, endX: 1300 },
-      { id: "kichi", startX: 1300, endX: 300 },
+      { id: "ofuku", startX: 360, endX: 1300 },
+      { id: "kichi", startX: 1300, endX: 360 },
     ];
 
     for (const crossing of crossings) {
@@ -280,13 +285,13 @@ describe("household interactions", () => {
       const character = world.chars.find((candidate) => candidate.id === crossing.id);
       assert.ok(character);
       character.x = crossing.startX;
-      character.y = 700;
+      character.y = 820;
       character.sit = 0;
       character.seat = null;
       character.reserved = null;
       character.pose = "walk";
       character.queue = [
-        { kind: "goto", x: crossing.endX, y: 700 },
+        { kind: "goto", x: crossing.endX, y: 820 },
         { kind: "wait", seconds: 30 },
       ];
 
@@ -302,7 +307,7 @@ describe("household interactions", () => {
         Math.abs(character.x - crossing.endX) < 7,
         `${character.id} did not get around the table`,
       );
-      assert.ok(Math.abs(character.y - 700) < 7, `${character.id} did not reach the destination`);
+      assert.ok(Math.abs(character.y - 820) < 7, `${character.id} did not reach the destination`);
     }
   });
 
