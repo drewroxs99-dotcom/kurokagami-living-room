@@ -63,7 +63,7 @@ export const LOOKS: { id: string; x: number; y: number; face: 1 | -1; label: str
   { id: "pine", x: 200, y: 824, face: -1, label: "the pine" },
   { id: "scroll", x: 920, y: 824, face: -1, label: "the scroll" },
   { id: "hearth", x: 760, y: 780, face: 1, label: "the brazier" },
-  { id: "screen", x: 1436, y: 836, face: -1, label: "the screen" },
+  { id: "screen", x: 1290, y: 824, face: 1, label: "the screen" },
   { id: "lantern", x: 344, y: 668, face: 1, label: "the floor lantern" },
   { id: "flowers", x: 670, y: 820, face: 1, label: "the flowers" },
 ];
@@ -591,7 +591,16 @@ function nearestFreeCup(world: World, ch: SimChar) {
   let best: (typeof world.cups)[number] | null = null;
   let bestD = Infinity;
   for (const cup of world.cups) {
-    if (cup.holder) continue;
+    if (
+      cup.holder ||
+      world.chars.some(
+        (other) =>
+          other.id !== ch.id &&
+          other.queue.some((task) => task.kind === "takeCup" && task.cupId === cup.id),
+      )
+    ) {
+      continue;
+    }
     const d = Math.hypot(cup.x - ch.x, cup.y - ch.y);
     if (d < bestD) {
       bestD = d;
@@ -657,7 +666,7 @@ function buildPlan(world: World, ch: SimChar, settings: Settings, plan: PlanName
     }
   } else if (plan === "drink") {
     const holding = ch.hold === "cup";
-    const freeCup = world.cups.some((cup) => cup.holder === null);
+    const freeCup = nearestFreeCup(world, ch) !== null;
     if (!holding && !freeCup) {
       tasks.push({ kind: "wait", seconds: 2 });
     } else {
