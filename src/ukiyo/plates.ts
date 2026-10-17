@@ -84,7 +84,7 @@ function drawTableForeground(ctx: CanvasRenderingContext2D, settings: Settings) 
   const room = roomPlate();
   if (!room) return;
 
-  const key = `${settings.env.lanternPaper}:${settings.env.screen}`;
+  const key = `${settings.env.lanternPaper}:${settings.env.screen}:${settings.env.screenColor}`;
   let layer = tableForegroundLayers.get(key);
   if (!layer) {
     layer = document.createElement("canvas");
@@ -288,18 +288,19 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
       if (isLantern && r > 158 && g0 > 108 && b > 48 && b < 205 && r - b > 38 && g0 - b > 12) {
         lantern.data[i] = lantern.data[i + 1] = lantern.data[i + 2] = lantern.data[i + 3] = 255;
       }
-      const onShoji =
-        (x > 500 && x < 680 && y > 260 && y < 635) ||
-        (x > 940 && x < 1245 && y > 250 && y < 642) ||
-        (x > 1252 && x < 1538 && y > 250 && y < 642);
+      const inFoldingScreen =
+        y > 310 &&
+        y < 748 &&
+        x > 30 &&
+        x < 545 &&
+        x > 38 + (y - 294) * 0.08 &&
+        x < 540 - Math.max(0, y - 372) * 0.43;
       if (
-        onShoji &&
-        r > 105 &&
-        g0 > 85 &&
-        b > 62 &&
-        r - b > 10 &&
-        r - b < 112 &&
-        g0 - b < 78
+        inFoldingScreen &&
+        r > 88 &&
+        r - g0 > 12 &&
+        g0 - b > 10 &&
+        r - b > 24
       ) {
         screen.data[i] = screen.data[i + 1] = screen.data[i + 2] = screen.data[i + 3] = 255;
       }
@@ -468,6 +469,13 @@ function drawRoomTints(ctx: CanvasRenderingContext2D, settings: Settings) {
     ctx.save();
     ctx.globalAlpha = 0.58;
     ctx.drawImage(patternOnMask(m.screen, settings.env.screen, "screen"), 0, 0);
+    ctx.restore();
+  }
+  if (settings.env.screenColor !== "ochre") {
+    ctx.save();
+    ctx.globalAlpha = 0.68;
+    ctx.globalCompositeOperation = "multiply";
+    ctx.drawImage(coloredMask(m.screen, pigmentHex(settings.env.screenColor), "screen"), 0, 0);
     ctx.restore();
   }
 }

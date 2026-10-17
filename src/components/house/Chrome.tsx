@@ -184,14 +184,19 @@ function Panel() {
               onChange={(lantern) => setEnv({ lantern })}
             />
             <Swatches
-              label="Lantern paper"
+              label="Lantern color"
               value={settings.env.lanternPaper}
               onChange={(lanternPaper) => setEnv({ lanternPaper })}
             />
             <Swatches
-              label="Cushion dye"
+              label="Cushion color"
               value={settings.env.wood}
               onChange={(wood) => setEnv({ wood })}
+            />
+            <Swatches
+              label="Folding screen color"
+              value={settings.env.screenColor}
+              onChange={(screenColor) => setEnv({ screenColor })}
             />
             <Swatches
               label="Tea glaze"

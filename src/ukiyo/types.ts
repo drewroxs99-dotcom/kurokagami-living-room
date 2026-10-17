@@ -70,6 +70,7 @@ export type EnvSettings = {
   cushionPattern: PatternId;
   wallArt: string;
   wood: string;
+  screenColor: string;
   glaze: string;
   lanternPaper: string;
   animals: boolean;

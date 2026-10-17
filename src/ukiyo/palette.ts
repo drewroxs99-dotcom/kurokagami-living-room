@@ -547,6 +547,7 @@ export function defaultEnv(): EnvSettings {
     cushionPattern: "seigaiha",
     wallArt: "",
     wood: "persimmon",
+    screenColor: "ochre",
     glaze: "ai",
     lanternPaper: "ochre",
     animals: true,
@@ -587,6 +588,7 @@ export function normalizeSettings(raw: unknown): Settings {
       wallArt:
         typeof e.wallArt === "string" && WALL_ART.some((art) => art.id === e.wallArt) ? e.wallArt : "",
       wood: pigmentId(e.wood, base.env.wood),
+      screenColor: pigmentId(e.screenColor, base.env.screenColor),
       glaze: pigmentId(e.glaze, base.env.glaze),
       lanternPaper: pigmentId(e.lanternPaper, base.env.lanternPaper),
       animals: bool(e.animals, base.env.animals),
