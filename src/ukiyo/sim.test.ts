@@ -107,6 +107,14 @@ describe("household interactions", () => {
     assert.equal(isWalkablePosition(1468, 824), true);
   });
 
+  it("keeps open floor under the tables walkable while blocking tabletops and legs", () => {
+    assert.equal(isWalkablePosition(550, 680), false);
+    assert.equal(isWalkablePosition(420, 750), false);
+    assert.equal(isWalkablePosition(550, 750), true);
+    assert.equal(isWalkablePosition(1000, 750), true);
+    assert.equal(isWalkablePosition(350, 750), true);
+  });
+
   it("picks up the cup at the table it approached", () => {
     const world = createWorld(defaultSettings());
 
