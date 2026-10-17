@@ -77,10 +77,16 @@ export const BRAZIER = { x: 828, y: 636 };
 export const HEARTH = LOOKS[2];
 export const BOUNDS = { x0: 160, y0: 640, x1: 1500, y1: 858 };
 
-/** Painted tabletop and legs in hall.jpg; feet stay clear of both silhouettes. */
+/** Solid tabletop, apron, and leg sections; open floor between table legs stays walkable. */
 export const TABLE_BOUNDS = [
-  { x0: 379, y0: 644, x1: 728, y1: 804 },
-  { x0: 818, y0: 636, x1: 1234, y1: 802 },
+  { x0: 379, y0: 644, x1: 728, y1: 712 },
+  { x0: 397, y0: 708, x1: 684, y1: 722 },
+  { x0: 397, y0: 716, x1: 439, y1: 786 },
+  { x0: 645, y0: 716, x1: 684, y1: 786 },
+  { x0: 818, y0: 636, x1: 1234, y1: 712 },
+  { x0: 834, y0: 708, x1: 1198, y1: 722 },
+  { x0: 834, y0: 716, x1: 880, y1: 786 },
+  { x0: 1150, y0: 716, x1: 1198, y1: 786 },
 ];
 export const SCREEN_BOUNDS = { x0: 1124, y0: 640, x1: 1580, y1: 710 };
 
