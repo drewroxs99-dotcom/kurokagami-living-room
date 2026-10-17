@@ -817,33 +817,89 @@ function choosePlan(world: World, ch: SimChar, settings: Settings): PlanName {
   return "wait";
 }
 
-function avoidOthers(world: World, settings: Settings, ch: SimChar, dt: number) {
+function avoidOthers(
+  world: World,
+  settings: Settings,
+  ch: SimChar,
+  target: { x: number; y: number },
+  dt: number,
+) {
+  let pushX = 0;
+  let pushY = 0;
+  const routeX = target.x - ch.x;
+  const routeY = (target.y - ch.y) * 1.4;
+  const routeLength = Math.hypot(routeX, routeY) || 1;
   for (const o of world.chars) {
     if (o.id === ch.id || !here(settings, o.id)) continue;
     let dx = ch.x - o.x;
-    let dy = ch.y - o.y;
-    let d = Math.hypot(dx, dy * 1.4);
-    if (d < 118) {
-      if (d < 0.1) {
-        dx = ch.id < o.id ? -1 : 1;
-        dy = 0;
-        d = 1;
-      }
-      const x = ch.x + (dx / d) * 132 * dt;
-      const y = ch.y + (dy / d) * 90 * dt;
-      if (
-        x >= BOUNDS.x0 &&
-        x <= BOUNDS.x1 &&
-        y >= BOUNDS.y0 &&
-        y <= BOUNDS.y1 &&
-        !blocked(x, y) &&
-        !segmentBlocked(ch.x, ch.y, x, y)
-      ) {
-        ch.x = x;
-        ch.y = y;
-      }
+    let dy = (ch.y - o.y) * 1.4;
+    const d = Math.hypot(dx, dy);
+    const clearance = 70;
+    if (d < clearance) {
+      const cross = (routeX * -dy - routeY * -dx) / routeLength;
+      const side = Math.abs(cross) < 0.1 ? (ch.id < o.id ? 1 : -1) : cross > 0 ? -1 : 1;
+      const force = ((clearance - d) / clearance) * 96 * dt;
+      pushX += (-routeY / routeLength) * side * force;
+      pushY += (routeX / routeLength) * side * force;
     }
   }
+  const length = Math.hypot(pushX, pushY);
+  const maxPush = 96 * dt;
+  if (length > maxPush) {
+    pushX = (pushX / length) * maxPush;
+    pushY = (pushY / length) * maxPush;
+  }
+  const x = ch.x + pushX;
+  const y = ch.y + pushY / 1.4;
+  if (
+    x >= BOUNDS.x0 &&
+    x <= BOUNDS.x1 &&
+    y >= BOUNDS.y0 &&
+    y <= BOUNDS.y1 &&
+    !blocked(x, y) &&
+    !segmentBlocked(ch.x, ch.y, x, y)
+  ) {
+    ch.x = x;
+    ch.y = y;
+  }
+}
+
+function crowdDetour(
+  world: World,
+  settings: Settings,
+  ch: SimChar,
+  task: Extract<Task, { kind: "goto" }>,
+) {
+  const dx = task.x - ch.x;
+  const dy = task.y - ch.y;
+  const length = Math.hypot(dx, dy);
+  if (length < 0.001) return null;
+  const sideX = (-dy / length) * 64;
+  const sideY = (dx / length) * 64;
+  const candidates = [
+    { x: ch.x + (dx / length) * 24 + sideX, y: ch.y + (dy / length) * 24 + sideY },
+    { x: ch.x + (dx / length) * 24 - sideX, y: ch.y + (dy / length) * 24 - sideY },
+  ].filter(
+    (point) =>
+      isWalkablePosition(point.x, point.y) &&
+      nextWaypoint(ch, point) !== null,
+  );
+  let best: { x: number; y: number } | null = null;
+  let bestScore = -Infinity;
+  for (const point of candidates) {
+    let nearest = Infinity;
+    for (const other of world.chars) {
+      if (other.id === ch.id || !here(settings, other.id)) continue;
+      nearest = Math.min(nearest, Math.hypot(point.x - other.x, (point.y - other.y) * 1.4));
+    }
+    const remaining = Math.hypot(task.x - point.x, task.y - point.y);
+    const score = Math.min(nearest, 150) * 0.65 - remaining * 0.25;
+    if (score > bestScore) {
+      best = point;
+      bestScore = score;
+    }
+  }
+  return best;
 }
 
 function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mutate: Mutate) {
@@ -886,21 +942,25 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
       return;
     }
     const step = Math.min(d, speed * dt);
-    const before = ch.x;
-    const intend: 1 | -1 = task.x >= ch.x ? 1 : -1;
+    const waypoint = nextWaypoint(ch, { x: task.x, y: task.y });
+    const headingX = waypoint?.x ?? task.x;
+    const intend: 1 | -1 =
+      Math.abs(headingX - ch.x) > 8 ? (headingX >= ch.x ? 1 : -1) : ch.facing;
+    const beforeX = ch.x;
+    const beforeY = ch.y;
     stepAvoid(ch, task.x, task.y, step);
     ch.pose = "walk";
     ch.walkPhase += dt * 2.35;
-    avoidOthers(world, settings, ch, dt);
+    avoidOthers(world, settings, ch, task, dt);
     clampWalk(ch);
-    const moved = ch.x - before;
-    if (Math.abs(moved) > 0.4) ch.facing = moved > 0 ? 1 : -1;
-    else if (Math.abs(task.x - ch.x) > 12 && Math.abs(dx) > Math.abs(dy)) ch.facing = intend;
-    if (Math.abs(ch.x - before) < 4 * dt) ch.stuck += dt;
+    ch.facing = intend;
+    const movement = Math.hypot(ch.x - beforeX, (ch.y - beforeY) * 1.4);
+    if (movement < speed * dt * 0.35) ch.stuck += dt;
     else ch.stuck = 0;
     if (ch.stuck > 2.8) {
-      ch.stuck = 0;
-      finish(ch);
+      const detour = crowdDetour(world, settings, ch, task);
+      if (detour) ch.queue.unshift({ kind: "goto", ...detour });
+      ch.stuck = detour ? 0 : 2.5;
     }
     return;
   }
