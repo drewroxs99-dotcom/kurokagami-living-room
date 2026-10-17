@@ -1,7 +1,18 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { defaultSettings } from "./palette.ts";
-import { createWorld, stepWorld } from "./sim.ts";
+import {
+  BOUNDS,
+  CUSHIONS,
+  createWorld,
+  isWalkablePosition,
+  LOOKS,
+  PIPE_TRAY,
+  SEATS,
+  stepWorld,
+  TABLE_BOUNDS,
+  TEA_TABLES,
+} from "./sim.ts";
 
 function advance(
   world: ReturnType<typeof createWorld>,
@@ -16,16 +27,61 @@ function advance(
   }
 }
 
-const TABLES = [
-  { x0: 390, y0: 648, x1: 710, y1: 804 },
-  { x0: 940, y0: 636, x1: 1224, y1: 802 },
-];
-
 function insideTable(x: number, y: number) {
-  return TABLES.some((table) => x > table.x0 && x < table.x1 && y > table.y0 && y < table.y1);
+  return TABLE_BOUNDS.some(
+    (table) => x > table.x0 && x < table.x1 && y > table.y0 && y < table.y1,
+  );
 }
 
 describe("household interactions", () => {
+  it("keeps every fixed destination on the walkable floor and cushions aligned to seats", () => {
+    const destinations = [
+      ...SEATS,
+      ...TEA_TABLES.map((table) => table.approach),
+      ...LOOKS,
+      PIPE_TRAY,
+    ];
+    for (const point of destinations) {
+      assert.ok(
+        point.x >= BOUNDS.x0 &&
+          point.x <= BOUNDS.x1 &&
+          point.y >= BOUNDS.y0 &&
+          point.y <= BOUNDS.y1,
+        `destination (${point.x}, ${point.y}) is outside the floor`,
+      );
+      assert.equal(
+        isWalkablePosition(point.x, point.y),
+        true,
+        `destination (${point.x}, ${point.y}) is blocked`,
+      );
+    }
+    const seatCushionPairs = [
+      ["left", "frontLeft"],
+      ["right", "frontRight"],
+      ["alcove", "sideLeft"],
+      ["front", "sideRight"],
+    ] as const;
+    for (const [seatId, cushionId] of seatCushionPairs) {
+      const seat = SEATS.find((candidate) => candidate.id === seatId);
+      const cushion = CUSHIONS.find((candidate) => candidate.id === cushionId);
+      assert.ok(seat);
+      assert.ok(cushion);
+      assert.equal(seat.x, cushion.x);
+      assert.equal(seat.y, cushion.y);
+    }
+    for (const table of TEA_TABLES) {
+      for (const cup of table.cups) {
+        assert.equal(insideTable(cup.x, cup.y), true, `${cup.id} is not on its tabletop`);
+      }
+      assert.equal(insideTable(table.pot.x, table.pot.y), true, `${table.id} teapot is not on its table`);
+      assert.equal(
+        insideTable(table.sweet.x, table.sweet.y),
+        true,
+        `${table.id} sweets are not on their table`,
+      );
+    }
+  });
+
   it("picks up the cup at the table it approached", () => {
     const world = createWorld(defaultSettings());
 
@@ -134,5 +190,29 @@ describe("household interactions", () => {
       );
       assert.ok(Math.abs(character.y - 700) < 7, `${character.id} did not reach the destination`);
     }
+  });
+
+  it("redirects an interaction destination placed inside a table to its nearest clear edge", () => {
+    const settings = defaultSettings();
+    for (const character of settings.chars) character.present = character.id === "ofuku";
+    const world = createWorld(settings);
+    const ofuku = world.chars.find((character) => character.id === "ofuku");
+    assert.ok(ofuku);
+    ofuku.x = 300;
+    ofuku.y = 828;
+    ofuku.sit = 0;
+    ofuku.seat = null;
+    ofuku.reserved = null;
+    ofuku.queue = [
+      { kind: "goto", x: 550, y: 700 },
+      { kind: "wait", seconds: 30 },
+    ];
+
+    advance(world, 8, settings, () => {
+      assert.equal(isWalkablePosition(ofuku.x, ofuku.y), true);
+    });
+
+    assert.ok(Math.abs(ofuku.x - 550) < 7);
+    assert.ok(Math.abs(ofuku.y - 645) < 7);
   });
 });

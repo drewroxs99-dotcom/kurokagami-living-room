@@ -296,11 +296,11 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
   const screenBottom = new Float32Array(w);
   for (let x = 1124; x <= 1580; x++) {
     screenTop[x] = x <= 1305
-      ? 266 + ((x - 1124) * (217 - 266)) / (1305 - 1124)
-      : 217 + ((x - 1305) * (168 - 217)) / (1568 - 1305);
+      ? 266 + ((x - 1124) * (243 - 266)) / (1305 - 1124)
+      : 243 + ((x - 1305) * (215 - 243)) / (1568 - 1305);
     screenBottom[x] = x <= 1390
-      ? 610 + ((x - 1126) * (645 - 610)) / (1390 - 1126)
-      : 645 + ((x - 1390) * (680 - 645)) / (1578 - 1390);
+      ? 640 + ((x - 1126) * (658 - 640)) / (1390 - 1126)
+      : 658 + ((x - 1390) * (680 - 658)) / (1578 - 1390);
   }
   for (let y = 0, p = 0; y < h; y++) {
     for (let x = 0; x < w; x++, p++) {
@@ -314,7 +314,8 @@ function ensureMasks(room: HTMLImageElement): Masks | null {
       if (onLantern && r > 145 && g0 > 92 && b > 35 && b < 205 && r - b > 32 && g0 - b > 8) {
         lantern.data[i] = lantern.data[i + 1] = lantern.data[i + 2] = lantern.data[i + 3] = 255;
       }
-      const inFoldingScreen = x >= 1124 && x <= 1580 && y >= screenTop[x] && y <= screenBottom[x];
+      const inFoldingScreen =
+        x >= 1124 && x <= 1580 && y >= screenTop[x] && y <= screenBottom[x];
       if (
         inFoldingScreen &&
         r > 55 &&
@@ -548,22 +549,45 @@ function drawWallArt(ctx: CanvasRenderingContext2D, settings: Settings) {
   if (!art) return;
   const image = load(art.src);
   if (!image) return;
-  const x = 758;
-  const y = 359;
-  const w = 68;
-  const h = 94;
-  const scale = Math.min(w / image.naturalWidth, h / image.naturalHeight);
-  const drawW = image.naturalWidth * scale;
-  const drawH = image.naturalHeight * scale;
+  const x = 805;
+  const y = 320;
+  const w = 55;
+  const h = 121;
+  const imageAspect = image.naturalWidth / image.naturalHeight;
+  const targetAspect = w / h;
+  const sx =
+    imageAspect > targetAspect
+      ? (image.naturalWidth - image.naturalHeight * targetAspect) / 2
+      : 0;
+  const sy =
+    imageAspect < targetAspect
+      ? (image.naturalHeight - image.naturalWidth / targetAspect) / 2
+      : 0;
+  const sw =
+    imageAspect > targetAspect ? image.naturalHeight * targetAspect : image.naturalWidth;
+  const sh =
+    imageAspect < targetAspect ? image.naturalWidth / targetAspect : image.naturalHeight;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(x, y, w, h);
+  ctx.moveTo(x + 2, y);
+  ctx.lineTo(x + w - 2, y + 2);
+  ctx.lineTo(x + w - 1, y + h - 2);
+  ctx.lineTo(x + 1, y + h);
+  ctx.closePath();
   ctx.clip();
-  ctx.drawImage(image, x + (w - drawW) / 2, y + (h - drawH) / 2, drawW, drawH);
+  ctx.filter = "sepia(0.48) saturate(0.58) brightness(0.82) contrast(0.88)";
+  ctx.globalAlpha = 0.56;
+  ctx.drawImage(image, sx, sy, sw, sh, x, y, w, h);
   ctx.restore();
-  ctx.strokeStyle = "rgba(57, 39, 27, 0.62)";
-  ctx.lineWidth = 1.2;
-  ctx.strokeRect(x, y, w, h);
+  ctx.strokeStyle = "rgba(57, 39, 27, 0.45)";
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y);
+  ctx.lineTo(x + w - 2, y + 2);
+  ctx.lineTo(x + w - 1, y + h - 2);
+  ctx.lineTo(x + 1, y + h);
+  ctx.closePath();
+  ctx.stroke();
 }
 
 function drawPot(ctx: CanvasRenderingContext2D, x: number, base: number, settings: Settings, ink: Ink) {
@@ -744,6 +768,50 @@ function drawPipeTray(ctx: CanvasRenderingContext2D, world: World, settings: Set
     ctx.restore();
   }
   ctx.restore();
+}
+
+export function characterHitBounds(
+  ch: SimChar,
+  config: CharConfig,
+  world: World,
+) {
+  const s = figureScale(ch.y) * config.stature;
+  const walking = ch.pose === "walk" && ch.sit < 0.2;
+  const transitioning = !walking && ch.sit > 0 && ch.sit < 1;
+  const plates: { pose: PlatePose; height: number }[] = walking
+    ? [{ pose: "walk", height: 200 * s }]
+    : transitioning
+      ? [
+          { pose: "stand", height: 200 * s },
+          { pose: "sit", height: 156 * s },
+        ]
+      : [{ pose: platePose(ch), height: (platePose(ch) === "sit" ? 156 : 200) * s }];
+  const bounds = plates.flatMap(({ pose, height }) => {
+    const img = load(srcFor(ch.id, pose)) ?? load(srcFor(ch.id, "stand"));
+    return img ? [{ width: (height * img.naturalWidth) / img.naturalHeight, height }] : [];
+  });
+  if (bounds.length === 0) return null;
+
+  const width = Math.max(...bounds.map((bound) => bound.width));
+  const height = Math.max(...bounds.map((bound) => bound.height));
+  const idle = Math.sin(world.time * 0.9 + ch.x * 0.01);
+  const bob = walking
+    ? -Math.abs(Math.sin(ch.walkPhase * Math.PI * 2)) * 5 * s
+    : idle * -2.2 * s;
+  const breath = 1 + Math.sin(world.time * 1.35 + ch.y) * 0.012;
+  const stride = walking ? Math.sin(ch.walkPhase * Math.PI * 2) : idle * 0.15;
+  const angle = Math.abs(stride * 0.045);
+  const halfWidth = (width * Math.cos(angle) + height * breath * Math.sin(angle)) / 2;
+  const halfHeight = (height * breath * Math.cos(angle) + width * Math.sin(angle)) / 2;
+  const x = screenFootX(ch.x, ch.y);
+  const centerY = ch.y + bob - (height * breath) / 2;
+  const pad = 10 * s;
+  return {
+    left: x - halfWidth - pad,
+    right: x + halfWidth + pad,
+    top: centerY - halfHeight - pad,
+    bottom: centerY + halfHeight + pad,
+  };
 }
 
 function drawPet(ctx: CanvasRenderingContext2D, pet: Pet, world: World) {

@@ -1,8 +1,8 @@
 import { pigmentHex, themeById, type Theme } from "./palette";
 import { patternTile } from "./patterns";
 import { SEATS, STAND, TABLE, TRAY } from "./sim";
-import { drawFigure, figureScale, screenFootX } from "./figure";
-import { drawPlateCast, roomPlate } from "./plates";
+import { drawFigure } from "./figure";
+import { characterHitBounds, drawPlateCast, roomPlate } from "./plates";
 import type { PatternId, Settings, World } from "./types";
 
 export type Layout = { x: number; y: number; w: number; h: number; scale: number };
@@ -1135,11 +1135,16 @@ export function hitCharacter(world: World, settings: Settings, sx: number, sy: n
   for (const ch of [...world.chars].sort((a, b) => a.y - b.y)) {
     const config = settings.chars.find((c) => c.id === ch.id);
     if (!config?.present) continue;
-    const s = figureScale(ch.y) * config.stature;
-    const x = screenFootX(ch.x, ch.y);
-    const top = ch.y - 430 * s;
-    const half = 90 * s;
-    if (sx > x - half && sx < x + half && sy > top && sy < ch.y + 12) found = ch.id;
+    const bounds = characterHitBounds(ch, config, world);
+    if (
+      bounds &&
+      sx >= bounds.left &&
+      sx <= bounds.right &&
+      sy >= bounds.top &&
+      sy <= bounds.bottom
+    ) {
+      found = ch.id;
+    }
   }
   return found;
 }
