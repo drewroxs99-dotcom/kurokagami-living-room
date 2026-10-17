@@ -187,21 +187,76 @@ describe("household interactions", () => {
     const world = createWorld(defaultSettings());
     advance(world, 30, defaultSettings(), (frame) => {
       for (const character of frame.chars) {
-        assert.equal(insideTable(character.x, character.y), false, `${character.id} crossed the table`);
+        assert.equal(
+          isWalkablePosition(character.x, character.y),
+          true,
+          `${character.id} entered a blocked area`,
+        );
       }
       for (const pet of frame.pets) {
-        assert.equal(insideTable(pet.x, pet.y), false, `${pet.id} crossed the table`);
+        assert.equal(isWalkablePosition(pet.x, pet.y), true, `${pet.id} entered a blocked area`);
       }
     });
 
     for (const character of world.chars) {
       assert.ok(character.x >= 160 && character.x <= 1500, `${character.id} left the room`);
       assert.ok(character.y >= 640 && character.y <= 858, `${character.id} left the mats`);
-      assert.equal(insideTable(character.x, character.y), false, `${character.id} crossed a tea table`);
+      assert.equal(isWalkablePosition(character.x, character.y), true, `${character.id} entered a blocked area`);
     }
     for (const pet of world.pets) {
-      assert.equal(insideTable(pet.x, pet.y), false, `${pet.id} crossed the table`);
+      assert.equal(isWalkablePosition(pet.x, pet.y), true, `${pet.id} entered a blocked area`);
     }
+  });
+
+  it("keeps tea service and attendant interactions on walkable routes", () => {
+    for (const plan of ["drink", "attend"] as const) {
+      const settings = defaultSettings();
+      for (const character of settings.chars) character.present = character.id === "ofuku";
+      settings.env.animals = false;
+      const world = createWorld(settings);
+      const ofuku = world.chars.find((character) => character.id === "ofuku");
+      assert.ok(ofuku);
+      ofuku.x = 300;
+      ofuku.y = 700;
+      ofuku.sit = 0;
+      ofuku.seat = null;
+      ofuku.reserved = null;
+      world.inject.push({ id: "ofuku", plan });
+
+      advance(world, 24, settings, (frame) => {
+        for (const character of frame.chars) {
+          if (settings.chars.find((candidate) => candidate.id === character.id)?.present) {
+            assert.equal(
+              isWalkablePosition(character.x, character.y),
+              true,
+              `${plan} sent ${character.id} into a blocked area`,
+            );
+          }
+        }
+      });
+    }
+  });
+
+  it("reroutes a pet when its next destination lands on a table", () => {
+    const settings = defaultSettings();
+    for (const character of settings.chars) character.present = false;
+    const world = createWorld(settings);
+    const cat = world.pets.find((pet) => pet.kind === "cat");
+    assert.ok(cat);
+    cat.x = 350;
+    cat.y = 700;
+    cat.tx = 350;
+    cat.ty = 700;
+    cat.wait = 0;
+    const randomValues = [0.1, 0.3, 0.2];
+    let randomIndex = 0;
+    world.rng = () => randomValues[Math.min(randomIndex++, randomValues.length - 1)] ?? 0.2;
+
+    advance(world, 1 / 60, settings);
+
+    assert.equal(isWalkablePosition(cat.tx, cat.ty), true);
+    assert.equal(insideTable(cat.tx, cat.ty), false);
+    assert.equal(isWalkablePosition(cat.x, cat.y), true);
   });
 
   it("routes people around the tea tables instead of walking across or getting stuck", () => {
