@@ -252,12 +252,24 @@ describe("household interactions", () => {
       { kind: "goto", x: 780, y: seated.y },
       { kind: "wait", seconds: 30 },
     ];
+    let minimumSeparation = Infinity;
+    let facingChanges = 0;
+    let previousFacing = walker.facing;
 
-    advance(world, 3, settings);
+    advance(world, 12, settings, () => {
+      minimumSeparation = Math.min(
+        minimumSeparation,
+        Math.hypot(walker.x - seated.x, (walker.y - seated.y) * 1.4),
+      );
+      if (walker.facing !== previousFacing) facingChanges++;
+      previousFacing = walker.facing;
+    });
 
     assert.ok(
-      Math.hypot(walker.x - seated.x, (walker.y - seated.y) * 1.4) >= 108,
-      "the walker overlapped the seated person",
+      minimumSeparation >= 42,
+      `the walker overlapped the seated person (${minimumSeparation.toFixed(1)}px clearance)`,
     );
+    assert.ok(facingChanges <= 2, `the walker flipped direction ${facingChanges} times`);
+    assert.ok(Math.abs(walker.x - 780) < 7, "the walker got stuck instead of reaching the destination");
   });
 });
