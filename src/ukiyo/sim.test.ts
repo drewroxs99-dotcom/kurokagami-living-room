@@ -110,6 +110,22 @@ describe("household interactions", () => {
     assert.equal(world.cups.find((cup) => cup.id === "r1")?.holder, "arai");
   });
 
+  it("does not send another guest to a cup already claimed by a queued interaction", () => {
+    const world = createWorld(defaultSettings());
+    const ofuku = world.chars.find((character) => character.id === "ofuku");
+    assert.ok(ofuku);
+    assert.ok(ofuku.queue.some((task) => task.kind === "takeCup" && task.cupId === "l1"));
+    world.inject.push({ id: "ume", plan: "drink" });
+
+    advance(world, 1 / 60);
+
+    const ume = world.chars.find((character) => character.id === "ume");
+    assert.ok(ume);
+    const claimedCup = ume.queue.find((task) => task.kind === "takeCup");
+    assert.ok(claimedCup);
+    assert.notEqual(claimedCup.cupId, "l1");
+  });
+
   it("keeps Hanae facing forward while her first route is mostly vertical", () => {
     const world = createWorld(defaultSettings());
     const hanae = world.chars.find((character) => character.id === "hanae");
