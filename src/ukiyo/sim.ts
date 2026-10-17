@@ -944,8 +944,15 @@ function stepChar(world: World, ch: SimChar, settings: Settings, dt: number, mut
     const step = Math.min(d, speed * dt);
     const waypoint = nextWaypoint(ch, { x: task.x, y: task.y });
     const headingX = waypoint?.x ?? task.x;
+    const headingY = waypoint?.y ?? task.y;
+    const horizontal = headingX - ch.x;
+    const vertical = headingY - ch.y;
     const intend: 1 | -1 =
-      Math.abs(headingX - ch.x) > 8 ? (headingX >= ch.x ? 1 : -1) : ch.facing;
+      Math.abs(horizontal) > 8 && Math.abs(horizontal) > Math.abs(vertical) * 1.15
+        ? horizontal >= 0
+          ? 1
+          : -1
+        : ch.facing;
     const beforeX = ch.x;
     const beforeY = ch.y;
     stepAvoid(ch, task.x, task.y, step);

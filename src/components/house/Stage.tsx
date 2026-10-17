@@ -3,7 +3,6 @@ import { setAmbience } from "@/ukiyo/audio";
 import { clientToWorld, hitCharacter, layoutFor, renderFrame, sheet } from "@/ukiyo/draw";
 import { getWorld } from "@/ukiyo/live";
 import { stepWorld } from "@/ukiyo/sim";
-import { listAssets, setActiveAssets } from "@/ukiyo/assets";
 import { useHouse } from "@/ukiyo/store";
 
 export function Stage() {
@@ -14,18 +13,6 @@ export function Stage() {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
-
-  useEffect(() => {
-    let alive = true;
-    listAssets().then((assets) => {
-      if (alive) setActiveAssets(assets);
-    }).catch(() => {
-      if (alive) setActiveAssets([]);
-    });
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   useEffect(() => {
     setAmbience(sound);

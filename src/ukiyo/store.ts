@@ -8,7 +8,7 @@ const KEY = "kurokagami-settings-v1";
 type HouseState = {
   settings: Settings;
   panel: boolean;
-  tab: "room" | "people" | "assets";
+  tab: "room" | "people";
   selected: string | null;
   paused: boolean;
   sound: boolean;
@@ -18,7 +18,7 @@ type HouseState = {
   patchChar: (id: string, patch: Partial<CharConfig>) => void;
   setTrait: (id: string, key: TraitKey, value: number) => void;
   setPanel: (open: boolean) => void;
-  setTab: (tab: "room" | "people" | "assets") => void;
+  setTab: (tab: "room" | "people") => void;
   setSelected: (id: string | null) => void;
   setPaused: (paused: boolean) => void;
   setSound: (sound: boolean) => void;
