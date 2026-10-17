@@ -82,6 +82,22 @@ describe("household interactions", () => {
     }
   });
 
+  it("spreads central room activities around the center seat", () => {
+    const destinations = [SEATS[2], LOOKS[1], LOOKS[2], LOOKS[5]];
+    for (let i = 0; i < destinations.length; i++) {
+      for (let j = i + 1; j < destinations.length; j++) {
+        const a = destinations[i];
+        const b = destinations[j];
+        assert.ok(a);
+        assert.ok(b);
+        assert.ok(
+          Math.hypot(a.x - b.x, (a.y - b.y) * 1.4) >= 90,
+          `${a.id} and ${b.id} destinations are too close`,
+        );
+      }
+    }
+  });
+
   it("picks up the cup at the table it approached", () => {
     const world = createWorld(defaultSettings());
 

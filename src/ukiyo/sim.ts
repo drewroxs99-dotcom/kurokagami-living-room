@@ -61,11 +61,11 @@ export const PIPE_TRAY = { x: 1388, y: 816, face: -1 as const };
 
 export const LOOKS: { id: string; x: number; y: number; face: 1 | -1; label: string }[] = [
   { id: "pine", x: 200, y: 824, face: -1, label: "the pine" },
-  { id: "scroll", x: 824, y: 840, face: 1, label: "the scroll" },
-  { id: "hearth", x: 804, y: 842, face: 1, label: "the brazier" },
+  { id: "scroll", x: 920, y: 824, face: -1, label: "the scroll" },
+  { id: "hearth", x: 760, y: 780, face: 1, label: "the brazier" },
   { id: "screen", x: 1436, y: 836, face: -1, label: "the screen" },
   { id: "lantern", x: 344, y: 668, face: 1, label: "the floor lantern" },
-  { id: "flowers", x: 756, y: 846, face: -1, label: "the flowers" },
+  { id: "flowers", x: 670, y: 820, face: 1, label: "the flowers" },
 ];
 
 export const TABLE = { x: 800, y: 700 };
